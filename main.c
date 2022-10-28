@@ -44,6 +44,8 @@
 /* Private variables ---------------------------------------------------------*/
  ADC_HandleTypeDef hadc2;
 
+TIM_HandleTypeDef htim3;
+
 SRAM_HandleTypeDef hsram1;
 
 /* USER CODE BEGIN PV */
@@ -54,6 +56,7 @@ SRAM_HandleTypeDef hsram1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_FSMC_Init(void);
+static void MX_TIM3_Init(void);
 static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -93,6 +96,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FSMC_Init();
+  MX_TIM3_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   LCD_INIT();
@@ -105,34 +109,76 @@ int main(void)
   HAL_ADC_Start(&hadc2);
 //  int cur;
 //  int prev;
-  float t = 3200;
-  int check = 0;
-  int r = 0;
-  int cu[320];
+//  float t = 32000;
+//  int check = 0;
+//  int r = 0;
+//  int cu[320];
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  double y = 0;
+  double y2 = 0;
+  double st = 1;
+  double sv = 0.5;
+  double sv2 = 2;
+  double y_arr[320];
+  double y3 = 0;
+  double y4 = 0;
+  for (int x = 0; x < 320; x++){
+	  //y2 = 120+sv*60*sin(x*2*M_PI/(st*160));
+	  y2 = 60+sv*60*sin(x*2*M_PI/(st*160));
+	  y4 = 180+sv2*60*sin(x*2*M_PI/(st*160));
+	  //LCD_DrawDot(y, x, WHITE);
+	  y_arr[x] = y2;
+	  if (y>0 && y<240){
+		  LCD_DrawLine(y2, x, y, x-1, BLUE);
+	  }
+	  if (y3>0 && y3<240){
+		  LCD_DrawLine(y4, x, y3, x-1, YELLOW);
+	  }
+	  y = y2;
+	  y3 = y4;
+  }
+//  for (int i = 1; i < 16; i++){
+//	  for (int j = 0; j < 240; j+=2){
+//		  if(i == 8){
+//			  LCD_DrawDot(j, i*20-1, GRID);
+//			  LCD_DrawDot(j, i*20+1, GRID);
+//		  }
+//		  LCD_DrawDot(j, i*20, GRID);
+//	  }
+//  }
+//  for (int i = 1; i < 12; i++){
+//		  for (int j = 0; j < 320; j+=2){
+//			 if(i == 6){
+//			  LCD_DrawDot(i*20-1, j, GRID);
+//			  LCD_DrawDot(i*20+1, j, GRID);
+//			}
+//			LCD_DrawDot(i*20, j, GRID);
+//	  }
+//  }
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_ADC_PollForConversion(&hadc2, 1000);
-	  for (int i = 1; i < 16; i++){
-		  for (int j = 0; j < 240; j+=2){
-			  if(i == 8){
-				  LCD_DrawDot(j, i*20-1, GRID);
-				  LCD_DrawDot(j, i*20+1, GRID);
-			  }
-			  LCD_DrawDot(j, i*20, GRID);
-		  }
-	  }
-	  for (int i = 1; i < 12; i++){
-	  		  for (int j = 0; j < 320; j+=2){
-	  			 if(i == 6){
-				  LCD_DrawDot(i*20-1, j, GRID);
-				  LCD_DrawDot(i*20+1, j, GRID);
-	  			}
-	  			LCD_DrawDot(i*20, j, GRID);
-		  }
-	  }
+	  HAL_ADC_PollForConversion(&hadc2, 1);
+//	  for (int i = 1; i < 16; i++){
+//		  for (int j = 0; j < 240; j+=2){
+//			  if(i == 8){
+//				  LCD_DrawDot(j, i*20-1, GRID);
+//				  LCD_DrawDot(j, i*20+1, GRID);
+//			  }
+//			  LCD_DrawDot(j, i*20, GRID);
+//		  }
+//	  }
+//	  for (int i = 1; i < 12; i++){
+//	  		  for (int j = 0; j < 320; j+=2){
+//	  			 if(i == 6){
+//				  LCD_DrawDot(i*20-1, j, GRID);
+//				  LCD_DrawDot(i*20+1, j, GRID);
+//	  			}
+//	  			LCD_DrawDot(i*20, j, GRID);
+//		  }
+//	  }
 //DrawDot
 //	  for (int i = 1; i < 320; i++){
 //		  if (check == 1 && i>0){
@@ -158,27 +204,30 @@ int main(void)
 //		  }
 //		  HAL_Delay(t/320);
 //	  }
-	  for (int i = 0; i < 320; i++){
-		  if (check == 1 && i>0){
-			  for (int j = 0; j < 240; j++){
-				  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
-					  LCD_DrawDot(j, i, BG);
-				  }
-				  if (j==0){
-					  LCD_DrawDot(0, i, BG);
-				  }
-			  }
-		  }
-		  if (i>0){
-			  cu[i-1] = r;
-		  }
-		  r = HAL_ADC_GetValue(&hadc2)*240/4095;
-		  if (i>1){
-			  LCD_DrawLine(cu[i-2], i-1, cu[i-1], i, FG);
-		  }
-		  HAL_Delay(t/320);
-	  }
-	  check = 1;
+//	  for (int i = 0; i < 320; i++){
+//		  if (check == 1 && i>0){
+//			  for (int j = 0; j < 240; j++){
+//				  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
+//					  LCD_DrawDot(j, i, BG);
+//				  }
+////				  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
+////					  LCD_DrawDot(j, i, GRID);
+////				  }
+//				  if (j==0){
+//					  LCD_DrawDot(0, i, BG);
+//				  }
+//			  }
+//		  }
+//		  if (i>0){
+//			  cu[i-1] = r;
+//		  }
+//		  r = HAL_ADC_GetValue(&hadc2)*240/4095;
+//		  if (i>1){
+//			  LCD_DrawLine(cu[i-2], i-1, cu[i-1], i, FG);
+//		  }
+//		  //HAL_Delay(t/320);
+//	  }
+//	  check = 1;
   }
   /* USER CODE END 3 */
 }
@@ -214,7 +263,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV16;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
@@ -273,6 +322,65 @@ static void MX_ADC2_Init(void)
   /* USER CODE BEGIN ADC2_Init 2 */
 
   /* USER CODE END ADC2_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV4;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 30000;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 
