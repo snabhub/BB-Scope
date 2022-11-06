@@ -107,35 +107,41 @@ int main(void)
   //HAL_ADCEx_Calibration_Start(&hadc1);
   HAL_ADCEx_Calibration_Start(&hadc2);
   HAL_ADC_Start(&hadc2);
+  double y1 = 0, y2 = 0;
 //  int cur;
 //  int prev;
 //  float t = 32000;
 //  int check = 0;
 //  int r = 0;
 //  int cu[320];
+  int X_L[]={1,10,100,1000,10000,100000,1000000,10000000};
+  void DrawGraph(double graph[], double size, double zoom, uint32_t color){
+	  for (int x = 1; x < size/zoom; x++){
+		  if (graph[x]>0 && graph[x]<240){
+			  LCD_DrawLine(graph[x], zoom*x, graph[x-1], zoom*(x-1), color);
+		  }
+	  }
+  }
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-  double y = 0;
-  double y2 = 0;
-  double st = 1;
-  double sv = 0.5;
-  double sv2 = 2;
-  double y_arr[320];
-  double y3 = 0;
-  double y4 = 0;
+  double zoom_x1 = 1;
+  double zoom_x2 = 1;
+  double scaling_vertical_1 = 2;
+  double scaling_vertical_2 = 0.5;
+  double first_graph[320];
+  double second_graph[320];
   for (int x = 0; x < 320; x++){
-	  //y2 = 120+sv*60*sin(x*2*M_PI/(st*160));
-	  y2 = 60+sv*60*sin(x*2*M_PI/(st*160));
-	  y4 = 180+sv2*60*sin(x*2*M_PI/(st*160));
-	  //LCD_DrawDot(y, x, WHITE);
-	  y_arr[x] = y2;
-	  if (y>0 && y<240){
-		  LCD_DrawLine(y2, x, y, x-1, BLUE);
+	  y1 = 60+60*sin(x*2*M_PI/(160));
+	  y2 = 180+60*sin(x*2*M_PI/(160));
+	  first_graph[x] = y1;
+	  second_graph[x] = y2;
+  }
+  for (int x = 1; x < 320; x++){
+	  if (first_graph[x]>0 && first_graph[x]<240){
+		  LCD_DrawLine(first_graph[x], x, first_graph[x-1], x-1, BLUE);
 	  }
-	  if (y3>0 && y3<240){
-		  LCD_DrawLine(y4, x, y3, x-1, YELLOW);
+	  if (second_graph[x]>0 && second_graph[x]<240){
+		  LCD_DrawLine(second_graph[x], x, second_graph[x-1], x-1, YELLOW);
 	  }
-	  y = y2;
-	  y3 = y4;
   }
 //  for (int i = 1; i < 16; i++){
 //	  for (int j = 0; j < 240; j+=2){
@@ -155,11 +161,59 @@ int main(void)
 //			LCD_DrawDot(i*20, j, GRID);
 //	  }
 //  }
+  int size1 = 0, size2 = 0;
+  uint32_t start;
+  int key1, key2;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+	if (key1 == 1){
+	  LCD_Clear(0, 0, 240, 320, BLACK);
+	  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+	  for (int x = 1; x < size1; x++){
+		  first_graph[x] = (first_graph[x]-60)*scaling_vertical_1+60;
+		  second_graph[x] = (second_graph[x]-180)*scaling_vertical_2+180;
+	  }
+	  for (int x = 1; x < size1/zoom_x1; x++){
+		  if (first_graph[x]>0 && first_graph[x]<240){
+			  LCD_DrawLine(first_graph[x], zoom_x1*x, first_graph[x-1], zoom_x1*(x-1), BLUE);
+		  }
+	  }
+	  for (int x = 1; x < size1/zoom_x2; x++){
+		  if (second_graph[x]>0 && second_graph[x]<240){
+			  LCD_DrawLine(second_graph[x], zoom_x2*x, second_graph[x-1], zoom_x2*(x-1), YELLOW);
+		  }
+	  }
+	}
+	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+	if (key2 == 1){
+		start = HAL_GetTick();
+		HAL_Delay(1000);
+		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+		if (key2 == 1){
+		  HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,GPIO_PIN_RESET);
+		  LCD_Clear(0, 0, 240, 320, BLACK);
+		  zoom_x1++;
+		  zoom_x2++;
+		  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+		  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//		  for (int x = 1; x < size/zoom_x1; x++){
+//			  if (first_graph[x]>0 && first_graph[x]<240){
+//				  LCD_DrawLine(first_graph[x], zoom_x1*x, first_graph[x-1], zoom_x1*(x-1), BLUE);
+//			  }
+//		  }
+//		  for (int x = 1; x < size/zoom_x2; x++){
+//			  if (second_graph[x]>0 && second_graph[x]<240){
+//				  LCD_DrawLine(second_graph[x], zoom_x2*x, second_graph[x-1], zoom_x2*(x-1), YELLOW);
+//			  }
+//		  }
+		  DrawGraph(first_graph, size1, zoom_x1, BLUE);
+		  DrawGraph(second_graph, size2, zoom_x2, YELLOW);
+		}
+	}
 	  HAL_ADC_PollForConversion(&hadc2, 1);
 //	  for (int i = 1; i < 16; i++){
 //		  for (int j = 0; j < 240; j+=2){
@@ -409,12 +463,6 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PC13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pin : PA2 */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
@@ -543,5 +591,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
-}
-#endif /* USE_FULL_ASSERT */
