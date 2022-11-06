@@ -64,7 +64,6 @@ static void MX_ADC2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /**
@@ -104,66 +103,104 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //HAL_ADCEx_Calibration_Start(&hadc1);
   HAL_ADCEx_Calibration_Start(&hadc2);
   HAL_ADC_Start(&hadc2);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   double y1 = 0, y2 = 0;
-//  int cur;
-//  int prev;
-//  float t = 32000;
-//  int check = 0;
-//  int r = 0;
-//  int cu[320];
+  double zoom_x1 = 1;
+  double zoom_x2 = 1;
+  double zoom_y1 = 2;
+  double zoom_y2 = 0.5;
+  int gsize1 = 2560;
+  double first_graph[gsize1], second_graph[gsize1];
+  uint32_t color1 = BLUE, color2 = YELLOW;
+  int size1 = 0, size2 = 0;
+  int key1, key2;
+  float t = 32000;
+  int check = 0;
+  int r = 0;
+  int cu[320];
   int X_L[]={1,10,100,1000,10000,100000,1000000,10000000};
+  void DrawGrid(){
+	  for (int i = 1; i < 16; i++){
+		  for (int j = 0; j < 240; j+=2){
+			  if(i == 8){
+				  LCD_DrawDot(j, i*20-1, GRID);
+				  LCD_DrawDot(j, i*20+1, GRID);
+			  }
+			  LCD_DrawDot(j, i*20, GRID);
+		  }
+	  }
+	  for (int i = 1; i < 12; i++){
+		  for (int j = 0; j < 320; j+=2){
+			 if(i == 6){
+			  LCD_DrawDot(i*20-1, j, GRID);
+			  LCD_DrawDot(i*20+1, j, GRID);
+			}
+			LCD_DrawDot(i*20, j, GRID);
+		  }
+	  }
+  }
   void DrawGraph(double graph[], double size, double zoom, uint32_t color){
-	  for (int x = 1; x < size/zoom; x++){
+	  for (int x = 1; x < 320/zoom; x++){
 		  if (graph[x]>0 && graph[x]<240){
 			  LCD_DrawLine(graph[x], zoom*x, graph[x-1], zoom*(x-1), color);
 		  }
 	  }
   }
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-  double zoom_x1 = 1;
-  double zoom_x2 = 1;
-  double scaling_vertical_1 = 2;
-  double scaling_vertical_2 = 0.5;
-  double first_graph[320];
-  double second_graph[320];
-  for (int x = 0; x < 320; x++){
-	  y1 = 60+60*sin(x*2*M_PI/(160));
-	  y2 = 180+60*sin(x*2*M_PI/(160));
+  void ZoomInVertical1(double graph[], double size, double scale){
+	  for (int x = 1; x < size; x++){
+		  graph[x] = (graph[x]-60)*scale+60;
+	  }
+  }
+  void ZoomInVertical2(double graph[], double size, double scale){
+	  for (int x = 1; x < size; x++){
+		  graph[x] = (graph[x]-180)*scale+180;
+	  }
+  }
+  void ZoomOutVertical1(double graph[], double size, double scale){
+	  for (int x = 1; x < size; x++){
+		  graph[x] = (graph[x]-60)/scale+60;
+	  }
+  }
+  void ZoomOutVertical2(double graph[], double size, double scale){
+	  for (int x = 1; x < size; x++){
+		  graph[x] = (graph[x]-180)/scale+180;
+	  }
+  }
+  double ZoomInHorizon(double zoom, double scale){
+	  double result = zoom*scale;
+	  return result;
+  }
+  double ZoomOutHorizon(double zoom, double scale){
+	  double result = zoom/scale;
+	  return result;
+  }
+  void MoveUp(double graph[], double size, double adjust){
+	  for (int x = 0; x < size; x++){
+		  graph[x] = graph[x] + adjust;
+	  }
+  }
+  void MoveDown(double graph[], double size, double adjust){
+	  for (int x = 0; x < size; x++){
+		  graph[x] = graph[x] - adjust;
+	  }
+  }
+  DrawGrid();
+  for (int x = 0; x < gsize1; x++){
+	  y1 = 60+60*sin(x*2*M_PI/160);
+	  y2 = 180+60*sin(x*2*M_PI/160);
+//	  if(){
+//		  first_graph[x] = y1;
+//		  second_graph[x] = y2;
+//	  }
 	  first_graph[x] = y1;
 	  second_graph[x] = y2;
   }
-  for (int x = 1; x < 320; x++){
-	  if (first_graph[x]>0 && first_graph[x]<240){
-		  LCD_DrawLine(first_graph[x], x, first_graph[x-1], x-1, BLUE);
-	  }
-	  if (second_graph[x]>0 && second_graph[x]<240){
-		  LCD_DrawLine(second_graph[x], x, second_graph[x-1], x-1, YELLOW);
-	  }
-  }
-//  for (int i = 1; i < 16; i++){
-//	  for (int j = 0; j < 240; j+=2){
-//		  if(i == 8){
-//			  LCD_DrawDot(j, i*20-1, GRID);
-//			  LCD_DrawDot(j, i*20+1, GRID);
-//		  }
-//		  LCD_DrawDot(j, i*20, GRID);
-//	  }
-//  }
-//  for (int i = 1; i < 12; i++){
-//		  for (int j = 0; j < 320; j+=2){
-//			 if(i == 6){
-//			  LCD_DrawDot(i*20-1, j, GRID);
-//			  LCD_DrawDot(i*20+1, j, GRID);
-//			}
-//			LCD_DrawDot(i*20, j, GRID);
-//	  }
-//  }
-  int size1 = 0, size2 = 0;
-  uint32_t start;
-  int key1, key2;
+  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+  DrawGraph(first_graph, size1, zoom_x1, color1);
+  DrawGraph(second_graph, size2, zoom_x2, color2);
   while (1)
   {
     /* USER CODE END WHILE */
@@ -171,102 +208,86 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
 	if (key1 == 1){
-	  LCD_Clear(0, 0, 240, 320, BLACK);
-	  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-	  for (int x = 1; x < size1; x++){
-		  first_graph[x] = (first_graph[x]-60)*scaling_vertical_1+60;
-		  second_graph[x] = (second_graph[x]-180)*scaling_vertical_2+180;
-	  }
-	  for (int x = 1; x < size1/zoom_x1; x++){
-		  if (first_graph[x]>0 && first_graph[x]<240){
-			  LCD_DrawLine(first_graph[x], zoom_x1*x, first_graph[x-1], zoom_x1*(x-1), BLUE);
-		  }
-	  }
-	  for (int x = 1; x < size1/zoom_x2; x++){
-		  if (second_graph[x]>0 && second_graph[x]<240){
-			  LCD_DrawLine(second_graph[x], zoom_x2*x, second_graph[x-1], zoom_x2*(x-1), YELLOW);
-		  }
-	  }
+		HAL_Delay(200);
+		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+		LCD_Clear(0, 0, 240, 320, BLACK);
+		DrawGrid();
+		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+		if (key1 == 1){
+			MoveUp(first_graph, size1, 10);
+			MoveUp(second_graph, size2, 10);
+		}
+		else{
+			MoveDown(first_graph, size1, 10);
+			MoveDown(second_graph, size2, 10);
+		}
+		DrawGraph(first_graph, size1, zoom_x1, color1);
+		DrawGraph(second_graph, size2, zoom_x2, color2);
 	}
 	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
 	if (key2 == 1){
-		start = HAL_GetTick();
-		HAL_Delay(1000);
+		HAL_Delay(200);
 		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+		LCD_Clear(0, 0, 240, 320, BLACK);
+		DrawGrid();
 		if (key2 == 1){
-		  HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,GPIO_PIN_RESET);
-		  LCD_Clear(0, 0, 240, 320, BLACK);
-		  zoom_x1++;
-		  zoom_x2++;
-		  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-		  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//		  for (int x = 1; x < size/zoom_x1; x++){
-//			  if (first_graph[x]>0 && first_graph[x]<240){
-//				  LCD_DrawLine(first_graph[x], zoom_x1*x, first_graph[x-1], zoom_x1*(x-1), BLUE);
-//			  }
-//		  }
-//		  for (int x = 1; x < size/zoom_x2; x++){
-//			  if (second_graph[x]>0 && second_graph[x]<240){
-//				  LCD_DrawLine(second_graph[x], zoom_x2*x, second_graph[x-1], zoom_x2*(x-1), YELLOW);
-//			  }
-//		  }
-		  DrawGraph(first_graph, size1, zoom_x1, BLUE);
-		  DrawGraph(second_graph, size2, zoom_x2, YELLOW);
+			MoveUp(first_graph, size1, 10);
+			MoveUp(second_graph, size2, 10);
 		}
+		else{
+			MoveDown(first_graph, size1, 10);
+			MoveDown(second_graph, size2, 10);
+		}
+		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+		DrawGraph(first_graph, size1, zoom_x1, color1);
+		DrawGraph(second_graph, size2, zoom_x2, color2);
 	}
-	  HAL_ADC_PollForConversion(&hadc2, 1);
-//	  for (int i = 1; i < 16; i++){
-//		  for (int j = 0; j < 240; j+=2){
-//			  if(i == 8){
-//				  LCD_DrawDot(j, i*20-1, GRID);
-//				  LCD_DrawDot(j, i*20+1, GRID);
-//			  }
-//			  LCD_DrawDot(j, i*20, GRID);
-//		  }
-//	  }
-//	  for (int i = 1; i < 12; i++){
-//	  		  for (int j = 0; j < 320; j+=2){
-//	  			 if(i == 6){
-//				  LCD_DrawDot(i*20-1, j, GRID);
-//				  LCD_DrawDot(i*20+1, j, GRID);
-//	  			}
-//	  			LCD_DrawDot(i*20, j, GRID);
-//		  }
-//	  }
-//DrawDot
-//	  for (int i = 1; i < 320; i++){
-//		  if (check == 1 && i>0){
-//			  LCD_DrawDot(cu[i], i, BG);
-//		  }
-//		  cu[i] = HAL_ADC_GetValue(&hadc2)*240/4095;
-//		  if (i > 1){
-//			  LCD_DrawDot(cu[i], i, FG);
-//		  }
-//		  HAL_Delay(t/320);
-//DrawLine with imperfect clear
-//	  }
-//	  for (int i = 0; i < 320; i++){
-//		  if (check == 1 && i>0){
-//			  LCD_DrawLine(cu[i-1], i-1, cu[i], i, BG);
-//		  }
-//		  if (i>0){
-//			  cu[i-1] = r;
-//		  }
-//		  r = HAL_ADC_GetValue(&hadc2)*240/4095;
-//		  if (i>1){
-//			  LCD_DrawLine(cu[i-2], i-1, cu[i-1], i, FG);
-//		  }
-//		  HAL_Delay(t/320);
-//	  }
+	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 1){
+		HAL_Delay(500);
+		LCD_Clear(0, 0, 240, 320, BLACK);
+		DrawGrid();
+		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 1){
+			ZoomOutVertical1(first_graph, size1, zoom_y1);
+			ZoomOutVertical2(second_graph, size2, zoom_y2);
+		}
+		else{
+			ZoomInVertical1(first_graph, size1, zoom_y1);
+			ZoomInVertical2(second_graph, size2, zoom_y2);
+		}
+		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+		DrawGraph(first_graph, size1, zoom_x1, color1);
+		DrawGraph(second_graph, size2, zoom_x2, color2);
+	}
+//	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1){
+//		HAL_Delay(500);
+//		LCD_Clear(0, 0, 240, 320, BLACK);
+//		DrawGrid();
+//		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1){
+//		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
+//		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
+//		}
+//		else{
+//		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
+//		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
+//		}
+//		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//		DrawGraph(first_graph, size1, zoom_x1, color1);
+//		DrawGraph(second_graph, size2, zoom_x2, color2);
+//	}
+	HAL_ADC_PollForConversion(&hadc2, 1);
 //	  for (int i = 0; i < 320; i++){
 //		  if (check == 1 && i>0){
 //			  for (int j = 0; j < 240; j++){
 //				  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
 //					  LCD_DrawDot(j, i, BG);
 //				  }
-////				  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
-////					  LCD_DrawDot(j, i, GRID);
-////				  }
+//				  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
+//					  LCD_DrawDot(j, i, GRID);
+//				  }
 //				  if (j==0){
 //					  LCD_DrawDot(0, i, BG);
 //				  }
@@ -279,7 +300,7 @@ int main(void)
 //		  if (i>1){
 //			  LCD_DrawLine(cu[i-2], i-1, cu[i-1], i, FG);
 //		  }
-//		  //HAL_Delay(t/320);
+//		  HAL_Delay(t/320);
 //	  }
 //	  check = 1;
   }
@@ -468,6 +489,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : PA4 PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PB0 PB1 PB5 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -591,3 +618,5 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
