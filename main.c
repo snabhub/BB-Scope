@@ -42,10 +42,14 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
- ADC_HandleTypeDef hadc2;
+ ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 
 TIM_HandleTypeDef htim3;
 
+DMA_HandleTypeDef hdma_memtomem_dma1_channel3;
+DMA_HandleTypeDef hdma_memtomem_dma1_channel2;
+DMA_HandleTypeDef hdma_memtomem_dma2_channel1;
 SRAM_HandleTypeDef hsram1;
 
 /* USER CODE BEGIN PV */
@@ -56,7 +60,9 @@ SRAM_HandleTypeDef hsram1;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_FSMC_Init(void);
+static void MX_DMA_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -95,7 +101,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_FSMC_Init();
+  MX_DMA_Init();
   MX_TIM3_Init();
+  MX_ADC1_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
   LCD_INIT();
@@ -105,22 +113,27 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   HAL_ADCEx_Calibration_Start(&hadc2);
   HAL_ADC_Start(&hadc2);
+//  HAL_ADCEx_Calibration_Start(&hadc1);
+//  HAL_ADC_Start(&hadc1);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
   double y1 = 0, y2 = 0;
   double zoom_x1 = 1;
   double zoom_x2 = 1;
   double zoom_y1 = 2;
   double zoom_y2 = 0.5;
+  double begin = 1;
   int gsize1 = 2560;
   double first_graph[gsize1], second_graph[gsize1];
+//  HAL_ADC_Start_DMA(&hadc1, first_graph, gsize1);
   uint32_t color1 = BLUE, color2 = YELLOW;
   int size1 = 0, size2 = 0;
-  int key1, key2;
+  int key1 = 0, key2 = 0, key3 = 1, key4 = 1;
   float t = 32000;
   int check = 0;
   int r = 0;
   int cu[320];
   int X_L[]={1,10,100,1000,10000,100000,1000000,10000000};
+
   void DrawGrid(){
 	  for (int i = 1; i < 16; i++){
 		  for (int j = 0; j < 240; j+=2){
@@ -141,6 +154,7 @@ int main(void)
 		  }
 	  }
   }
+
   void DrawGraph(double graph[], double size, double zoom, uint32_t color){
 	  for (int x = 1; x < 320/zoom; x++){
 		  if (graph[x]>0 && graph[x]<240){
@@ -148,64 +162,103 @@ int main(void)
 		  }
 	  }
   }
+
   void ZoomInVertical1(double graph[], double size, double scale){
 	  for (int x = 1; x < size; x++){
 		  graph[x] = (graph[x]-60)*scale+60;
 	  }
   }
+
   void ZoomInVertical2(double graph[], double size, double scale){
 	  for (int x = 1; x < size; x++){
 		  graph[x] = (graph[x]-180)*scale+180;
 	  }
   }
+
   void ZoomOutVertical1(double graph[], double size, double scale){
 	  for (int x = 1; x < size; x++){
 		  graph[x] = (graph[x]-60)/scale+60;
 	  }
   }
+
   void ZoomOutVertical2(double graph[], double size, double scale){
 	  for (int x = 1; x < size; x++){
 		  graph[x] = (graph[x]-180)/scale+180;
 	  }
   }
+
   double ZoomInHorizon(double zoom, double scale){
 	  double result = zoom*scale;
 	  return result;
   }
+
   double ZoomOutHorizon(double zoom, double scale){
 	  double result = zoom/scale;
 	  return result;
   }
+
   void MoveUp(double graph[], double size, double adjust){
 	  for (int x = 0; x < size; x++){
 		  graph[x] = graph[x] + adjust;
 	  }
   }
+
   void MoveDown(double graph[], double size, double adjust){
 	  for (int x = 0; x < size; x++){
 		  graph[x] = graph[x] - adjust;
 	  }
   }
+//  double MoveLeft(double graph[], double size, double adjust){
+//	  double result = begin - adjust;
+//	  return result;
+//  }
+//  double MoveRight(double graph[], double size, double adjust){
+//	  double result = begin + adjust;
+//	  return result;
+//  }
   DrawGrid();
-  for (int x = 0; x < gsize1; x++){
-	  y1 = 60+60*sin(x*2*M_PI/160);
-	  y2 = 180+60*sin(x*2*M_PI/160);
-//	  if(){
-//		  first_graph[x] = y1;
-//		  second_graph[x] = y2;
-//	  }
-	  first_graph[x] = y1;
-	  second_graph[x] = y2;
-  }
-  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-  DrawGraph(first_graph, size1, zoom_x1, color1);
-  DrawGraph(second_graph, size2, zoom_x2, color2);
+//  for (int x = 0; x < gsize1; x++){
+//	  y1 = 60+60*sin(x*2*M_PI/160);
+//	  y2 = 180+60*sin(x*2*M_PI/160);
+//	  first_graph[x] = y1;
+//	  second_graph[x] = y2;
+//  }
+//  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//  DrawGraph(first_graph, size1, zoom_x1, color1);
+//  DrawGraph(second_graph, size2, zoom_x2, color2);
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	HAL_ADC_PollForConversion(&hadc2, 1000);
+	for (int i = 0; i < 320; i++){
+	  if (check == 1 && i>0){
+		  for (int j = 0; j < 240; j++){
+			  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
+				  LCD_DrawDot(j, i, BG);
+			  }
+			  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
+				  LCD_DrawDot(j, i, GRID);
+			  }
+			  if (j==0){
+				  LCD_DrawDot(0, i, BG);
+			  }
+		  }
+	  }
+	  if (i>0){
+		  first_graph[i-1] = r;
+	  }
+//	  HAL_ADC_PollForConversion(&hadc1, 1000);
+	  r = HAL_ADC_GetValue(&hadc2)*240/4095;
+	  if (i>1){
+		  LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
+	  }
+//	  HAL_Delay(t/320);
+	}
+	check = 1;
+
 	key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
 	if (key1 == 1){
 		HAL_Delay(200);
@@ -215,12 +268,12 @@ int main(void)
 		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
 		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
 		if (key1 == 1){
-			MoveUp(first_graph, size1, 10);
-			MoveUp(second_graph, size2, 10);
+//			begin = MoveLeft(first_graph, size1, 10);
+			//MoveLeft(second_graph, size2, 10);
 		}
 		else{
-			MoveDown(first_graph, size1, 10);
-			MoveDown(second_graph, size2, 10);
+//			begin = MoveRight(first_graph, size1, 10);
+			//MoveRight(second_graph, size2, 10);
 		}
 		DrawGraph(first_graph, size1, zoom_x1, color1);
 		DrawGraph(second_graph, size2, zoom_x2, color2);
@@ -244,11 +297,13 @@ int main(void)
 		DrawGraph(first_graph, size1, zoom_x1, color1);
 		DrawGraph(second_graph, size2, zoom_x2, color2);
 	}
-	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 1){
-		HAL_Delay(500);
+	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+	if (key3 == 1){
+		HAL_Delay(200);
+		key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
 		LCD_Clear(0, 0, 240, 320, BLACK);
 		DrawGrid();
-		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == 1){
+		if (key3 == 1){
 			ZoomOutVertical1(first_graph, size1, zoom_y1);
 			ZoomOutVertical2(second_graph, size2, zoom_y2);
 		}
@@ -261,48 +316,27 @@ int main(void)
 		DrawGraph(first_graph, size1, zoom_x1, color1);
 		DrawGraph(second_graph, size2, zoom_x2, color2);
 	}
-//	if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1){
-//		HAL_Delay(500);
-//		LCD_Clear(0, 0, 240, 320, BLACK);
-//		DrawGrid();
-//		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1){
-//		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
-//		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
-//		}
-//		else{
-//		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
-//		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
-//		}
-//		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//		DrawGraph(first_graph, size1, zoom_x1, color1);
-//		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	}
-	HAL_ADC_PollForConversion(&hadc2, 1);
-//	  for (int i = 0; i < 320; i++){
-//		  if (check == 1 && i>0){
-//			  for (int j = 0; j < 240; j++){
-//				  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
-//					  LCD_DrawDot(j, i, BG);
-//				  }
-//				  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
-//					  LCD_DrawDot(j, i, GRID);
-//				  }
-//				  if (j==0){
-//					  LCD_DrawDot(0, i, BG);
-//				  }
-//			  }
-//		  }
-//		  if (i>0){
-//			  cu[i-1] = r;
-//		  }
-//		  r = HAL_ADC_GetValue(&hadc2)*240/4095;
-//		  if (i>1){
-//			  LCD_DrawLine(cu[i-2], i-1, cu[i-1], i, FG);
-//		  }
-//		  HAL_Delay(t/320);
-//	  }
-//	  check = 1;
+	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+	if (key4 == 1){
+		key4 = 1;
+		HAL_Delay(200);
+		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+		LCD_Clear(0, 0, 240, 320, BLACK);
+		DrawGrid();
+		if (key4 == 1){
+		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
+		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
+		}
+		else{
+		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
+		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
+		}
+		key4 = 1;
+		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+		DrawGraph(first_graph, size1, zoom_x1, color1);
+		DrawGraph(second_graph, size2, zoom_x2, color2);
+	}
   }
   /* USER CODE END 3 */
 }
@@ -354,6 +388,53 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_2;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
   * @brief ADC2 Initialization Function
   * @param None
   * @retval None
@@ -375,7 +456,7 @@ static void MX_ADC2_Init(void)
   */
   hadc2.Instance = ADC2;
   hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc2.Init.ContinuousConvMode = ENABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
   hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -460,6 +541,64 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  * Configure DMA for memory to memory transfers
+  *   hdma_memtomem_dma1_channel3
+  *   hdma_memtomem_dma1_channel2
+  *   hdma_memtomem_dma2_channel1
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* Configure DMA request hdma_memtomem_dma1_channel3 on DMA1_Channel3 */
+  hdma_memtomem_dma1_channel3.Instance = DMA1_Channel3;
+  hdma_memtomem_dma1_channel3.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma1_channel3.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma1_channel3.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma1_channel3.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel3.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel3.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma1_channel3.Init.Priority = DMA_PRIORITY_LOW;
+  if (HAL_DMA_Init(&hdma_memtomem_dma1_channel3) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+  /* Configure DMA request hdma_memtomem_dma1_channel2 on DMA1_Channel2 */
+  hdma_memtomem_dma1_channel2.Instance = DMA1_Channel2;
+  hdma_memtomem_dma1_channel2.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma1_channel2.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma1_channel2.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma1_channel2.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel2.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma1_channel2.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma1_channel2.Init.Priority = DMA_PRIORITY_LOW;
+  if (HAL_DMA_Init(&hdma_memtomem_dma1_channel2) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+  /* Configure DMA request hdma_memtomem_dma2_channel1 on DMA2_Channel1 */
+  hdma_memtomem_dma2_channel1.Instance = DMA2_Channel1;
+  hdma_memtomem_dma2_channel1.Init.Direction = DMA_MEMORY_TO_MEMORY;
+  hdma_memtomem_dma2_channel1.Init.PeriphInc = DMA_PINC_ENABLE;
+  hdma_memtomem_dma2_channel1.Init.MemInc = DMA_MINC_ENABLE;
+  hdma_memtomem_dma2_channel1.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
+  hdma_memtomem_dma2_channel1.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
+  hdma_memtomem_dma2_channel1.Init.Mode = DMA_NORMAL;
+  hdma_memtomem_dma2_channel1.Init.Priority = DMA_PRIORITY_LOW;
+  if (HAL_DMA_Init(&hdma_memtomem_dma2_channel1) != HAL_OK)
+  {
+    Error_Handler( );
+  }
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -484,15 +623,10 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : PA2 */
-  GPIO_InitStruct.Pin = GPIO_PIN_2;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pins : PA4 PA5 */
   GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB1 PB5 */
@@ -587,6 +721,14 @@ void ct(int num, int ba, int di, char* arr){
 	}
 	arr[i] = '\0';
 }
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+//	HAL_ADC_WritePin(LCD)
+
+}
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+//	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+}
 /* USER CODE END 4 */
 
 /**
@@ -620,3 +762,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
