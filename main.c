@@ -119,7 +119,7 @@ int main(void)
   double zoom_x2 = 1;
   double zoom_y1 = 2;
   double zoom_y2 = 0.5;
-  int gsize1 = 2560;
+  int gsize1 = 320;
   double first_graph[gsize1], second_graph[gsize1];
   uint32_t color1 = BLUE, color2 = YELLOW;
   int size1 = 0, size2 = 0;
@@ -219,9 +219,14 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		HAL_ADC_PollForConversion(&hadc2, 1);
+		HAL_ADC_PollForConversion(&hadc2, 100);
+//		for (int i = 0; i < 320; i++){
+//			first_graph[i] = HAL_ADC_GetValue(&hadc2);
+//		}
+//		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//		DrawGraph(first_graph, size1, zoom_x1, color1);
 		  for (int i = 0; i < 320; i++){
-			  if (check == 1 && i>0){
+			  if (check==1&&i>0){
 				  for (int j = 0; j < 240; j++){
 					  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
 						  LCD_DrawDot(j, i, BG);
@@ -237,88 +242,93 @@ int main(void)
 			  if (i>0){
 				  first_graph[i-1] = r;
 			  }
-			  r = HAL_ADC_GetValue(&hadc2)*240/4095;
+			  r = HAL_ADC_GetValue(&hadc2)*240/4095+120;
 			  if (i>1){
 				  LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
 			  }
 			  HAL_Delay(t/320);
 		  }
 		  check = 1;
-	  key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-	  	if (key1 == 1){
-	  		HAL_Delay(200);
-	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-	  		LCD_Clear(0, 0, 240, 320, BLACK);
-	  		DrawGrid();
-	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-	  		if (key1 == 1){
-	  			begin = MoveRight(begin, 10);
-	  		}
-	  		else{
-	  			begin = MoveRight(begin, 10);
-	  		}
-	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-	  	}
-	  	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-	  	if (key2 == 1){
-	  		HAL_Delay(200);
-	  		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-	  		LCD_Clear(0, 0, 240, 320, BLACK);
-	  		DrawGrid();
-	  		if (key2 == 1){
-	  			MoveUp(first_graph, size1, 10);
-	  			MoveUp(second_graph, size2, 10);
-	  		}
-	  		else{
-	  			MoveDown(first_graph, size1, 10);
-	  			MoveDown(second_graph, size2, 10);
-	  		}
-	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-	  	}
-	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-	  	if (key3 == 1){
-	  		HAL_Delay(200);
-	  		key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-	  		LCD_Clear(0, 0, 240, 320, BLACK);
-	  		DrawGrid();
-	  		if (key3 == 1){
-	  			ZoomOutVertical1(first_graph, size1, zoom_y1);
-	  			ZoomOutVertical2(second_graph, size2, zoom_y2);
-	  		}
-	  		else{
-	  			ZoomInVertical1(first_graph, size1, zoom_y1);
-	  			ZoomInVertical2(second_graph, size2, zoom_y2);
-	  		}
-	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-	  	}
-	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-	  	if (key4 == 1){
-	  		HAL_Delay(200);
-	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-	  		LCD_Clear(0, 0, 240, 320, BLACK);
-	  		DrawGrid();
-	  		if (key4 == 1){
-	  		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
-	  		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
-	  		}
-	  		else{
-	  		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
-	  		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
-	  		}
-	  		key4 = 1;
-	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-	  	}
+//	  key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+
+
+
+
+//
+//	  	if (key1 == 1){
+//	  		HAL_Delay(200);
+//	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+//	  		LCD_Clear(0, 0, 240, 320, BLACK);
+//	  		DrawGrid();
+//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//	  		if (key1 == 1){
+//	  			begin = MoveRight(begin, 10);
+//	  		}
+//	  		else{
+//	  			begin = MoveRight(begin, 10);
+//	  		}
+//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
+////	  		DrawGraph(second_graph, size2, zoom_x2, color2);
+//	  	}
+//	  	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+//	  	if (key2 == 1){
+//	  		HAL_Delay(200);
+//	  		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+//	  		LCD_Clear(0, 0, 240, 320, BLACK);
+//	  		DrawGrid();
+//	  		if (key2 == 1){
+//	  			MoveUp(first_graph, size1, 10);
+//	  			MoveUp(second_graph, size2, 10);
+//	  		}
+//	  		else{
+//	  			MoveDown(first_graph, size1, 10);
+//	  			MoveDown(second_graph, size2, 10);
+//	  		}
+//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
+////	  		DrawGraph(second_graph, size2, zoom_x2, color2);
+//	  	}
+//	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+//	  	if (key3 == 1){
+//	  		HAL_Delay(200);
+//	  		key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+//	  		LCD_Clear(0, 0, 240, 320, BLACK);
+//	  		DrawGrid();
+//	  		if (key3 == 1){
+//	  			ZoomOutVertical1(first_graph, size1, zoom_y1);
+//	  			ZoomOutVertical2(second_graph, size2, zoom_y2);
+//	  		}
+//	  		else{
+//	  			ZoomInVertical1(first_graph, size1, zoom_y1);
+//	  			ZoomInVertical2(second_graph, size2, zoom_y2);
+//	  		}
+//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
+////	  		DrawGraph(second_graph, size2, zoom_x2, color2);
+//	  	}
+//	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+//	  	if (key4 == 1){
+//	  		HAL_Delay(200);
+//	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+//	  		LCD_Clear(0, 0, 240, 320, BLACK);
+//	  		DrawGrid();
+//	  		if (key4 == 1){
+//	  		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
+//	  		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
+//	  		}
+//	  		else{
+//	  		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
+//	  		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
+//	  		}
+//	  		key4 = 1;
+//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
+//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
+//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
+////	  		DrawGraph(second_graph, size2, zoom_x2, color2);
+//	  	}
   }
   /* USER CODE END 3 */
 }
@@ -438,7 +448,7 @@ static void MX_ADC2_Init(void)
   */
   hadc2.Instance = ADC2;
   hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.ContinuousConvMode = ENABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
   hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -692,17 +702,7 @@ static void MX_FSMC_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void ct(int num, int ba, int di, char* arr){
-	int i = 0, r;
-	int t = pow(ba, di-1);
-	while(t!=0){
-		r = ((num/t)%ba);
-		arr[i] = (ba < 11)? 48+r: (r < 10)? 48+r: 55+r;
-		t/=ba;
-		i++;
-	}
-	arr[i] = '\0';
-}
+
 /* USER CODE END 4 */
 
 /**
