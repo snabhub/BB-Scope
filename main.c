@@ -44,11 +44,10 @@
 /* Private variables ---------------------------------------------------------*/
  ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
+DMA_HandleTypeDef hdma_adc1;
 
 TIM_HandleTypeDef htim3;
 
-DMA_HandleTypeDef hdma_memtomem_dma1_channel3;
-DMA_HandleTypeDef hdma_memtomem_dma1_channel2;
 DMA_HandleTypeDef hdma_memtomem_dma2_channel1;
 SRAM_HandleTypeDef hsram1;
 
@@ -64,6 +63,7 @@ static void MX_DMA_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
+uint32_t AD_RES = 0;
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -111,6 +111,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  double temp = 0;
+  HAL_ADCEx_Calibration_Start(&hadc1);
+  HAL_ADC_Start(&hadc1);
   HAL_ADCEx_Calibration_Start(&hadc2);
   HAL_ADC_Start(&hadc2);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
@@ -120,7 +123,7 @@ int main(void)
   double zoom_y1 = 2;
   double zoom_y2 = 0.5;
   int gsize1 = 320;
-  double first_graph[gsize1], second_graph[gsize1];
+  uint16_t first_graph[gsize1], second_graph[gsize1];
   uint32_t color1 = BLUE, color2 = YELLOW;
   int size1 = 0, size2 = 0;
   int key1=0, key2=0, key3=0, key4=0;
@@ -204,6 +207,7 @@ int main(void)
 	  return result;
 	}
   DrawGrid();
+  //create static array
 //  for (int x = 0; x < gsize1; x++){
 //	  y1 = 60+60*sin(x*2*M_PI/160);
 //	  y2 = 180+60*sin(x*2*M_PI/160);
@@ -214,46 +218,64 @@ int main(void)
 //  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
 //  DrawGraph(first_graph, size1, zoom_x1, color1);
 //  DrawGraph(second_graph, size2, zoom_x2, color2);
+  int index = 0;
+  int i = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		HAL_ADC_PollForConversion(&hadc2, 100);
-//		for (int i = 0; i < 320; i++){
-//			first_graph[i] = HAL_ADC_GetValue(&hadc2);
+	  //Using DMA
+//	  i = index%320;
+	  //Remove previous graph and keep the grid : making display extremely slow
+//		  for (int j = 0; j < 240; j++){
+//			  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
+//				  LCD_DrawDot(j, i, BG);
+//			  }
+//			  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
+//				  LCD_DrawDot(j, i, GRID);
+//			  }
+//			  if (j==0){
+//				  LCD_DrawDot(0, i, BG);
+//			  }
+//		  }
+//		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
+//		first_graph[i] = first_graph[i]*240/4095;
+//		if (i>1){
+//			LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
 //		}
-//		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//		DrawGraph(first_graph, size1, zoom_x1, color1);
-		  for (int i = 0; i < 320; i++){
-			  if (check==1&&i>0){
-				  for (int j = 0; j < 240; j++){
-					  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
-						  LCD_DrawDot(j, i, BG);
-					  }
-					  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
-						  LCD_DrawDot(j, i, GRID);
-					  }
-					  if (j==0){
-						  LCD_DrawDot(0, i, BG);
-					  }
-				  }
-			  }
-			  if (i>0){
-				  first_graph[i-1] = r;
-			  }
-			  r = HAL_ADC_GetValue(&hadc2)*240/4095+120;
-			  if (i>1){
-				  LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
-			  }
-			  HAL_Delay(t/320);
-		  }
-		  check = 1;
+//		index++;
+	  //
+		//Using normal method
+//		HAL_ADC_PollForConversion(&hadc2, 100);
+//		  for (int i = 0; i < 320; i++){
+			  // Remove previous graph and keep the grid : making display extremely slow
+//			  if (i>0){
+//				  for (int j = 0; j < 240; j++){
+//					  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
+//						  LCD_DrawDot(j, i, BG);
+//					  }
+//					  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
+//						  LCD_DrawDot(j, i, GRID);
+//					  }
+//					  if (j==0){
+//						  LCD_DrawDot(0, i, BG);
+//					  }
+//				  }
+//			  }
+	  //
+//			  if (i>0){
+//				  first_graph[i-1] = r;
+//			  }
+//			  r = HAL_ADC_GetValue(&hadc2)*240/4095;
+//			  if (i>1){
+//				  LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
+//			  }
+//		  }
+//		  check = 1;
+
+	  //4 functions
 //	  key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-
-
-
-
 //
 //	  	if (key1 == 1){
 //	  		HAL_Delay(200);
@@ -401,7 +423,7 @@ static void MX_ADC1_Init(void)
   */
   hadc1.Instance = ADC1;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
@@ -415,7 +437,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_55CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -535,44 +557,14 @@ static void MX_TIM3_Init(void)
 /**
   * Enable DMA controller clock
   * Configure DMA for memory to memory transfers
-  *   hdma_memtomem_dma1_channel3
-  *   hdma_memtomem_dma1_channel2
   *   hdma_memtomem_dma2_channel1
   */
 static void MX_DMA_Init(void)
 {
 
   /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
   __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* Configure DMA request hdma_memtomem_dma1_channel3 on DMA1_Channel3 */
-  hdma_memtomem_dma1_channel3.Instance = DMA1_Channel3;
-  hdma_memtomem_dma1_channel3.Init.Direction = DMA_MEMORY_TO_MEMORY;
-  hdma_memtomem_dma1_channel3.Init.PeriphInc = DMA_PINC_ENABLE;
-  hdma_memtomem_dma1_channel3.Init.MemInc = DMA_MINC_ENABLE;
-  hdma_memtomem_dma1_channel3.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-  hdma_memtomem_dma1_channel3.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-  hdma_memtomem_dma1_channel3.Init.Mode = DMA_NORMAL;
-  hdma_memtomem_dma1_channel3.Init.Priority = DMA_PRIORITY_LOW;
-  if (HAL_DMA_Init(&hdma_memtomem_dma1_channel3) != HAL_OK)
-  {
-    Error_Handler( );
-  }
-
-  /* Configure DMA request hdma_memtomem_dma1_channel2 on DMA1_Channel2 */
-  hdma_memtomem_dma1_channel2.Instance = DMA1_Channel2;
-  hdma_memtomem_dma1_channel2.Init.Direction = DMA_MEMORY_TO_MEMORY;
-  hdma_memtomem_dma1_channel2.Init.PeriphInc = DMA_PINC_ENABLE;
-  hdma_memtomem_dma1_channel2.Init.MemInc = DMA_MINC_ENABLE;
-  hdma_memtomem_dma1_channel2.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-  hdma_memtomem_dma1_channel2.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-  hdma_memtomem_dma1_channel2.Init.Mode = DMA_NORMAL;
-  hdma_memtomem_dma1_channel2.Init.Priority = DMA_PRIORITY_LOW;
-  if (HAL_DMA_Init(&hdma_memtomem_dma1_channel2) != HAL_OK)
-  {
-    Error_Handler( );
-  }
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* Configure DMA request hdma_memtomem_dma2_channel1 on DMA2_Channel1 */
   hdma_memtomem_dma2_channel1.Instance = DMA2_Channel1;
@@ -587,6 +579,11 @@ static void MX_DMA_Init(void)
   {
     Error_Handler( );
   }
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
 
