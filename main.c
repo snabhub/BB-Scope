@@ -226,44 +226,46 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  //Using DMA
-//	  i = index%320;
-	  //Remove previous graph and keep the grid : making display extremely slow
-//		  for (int j = 0; j < 240; j++){
-//			  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
-//				  LCD_DrawDot(j, i, BG);
-//			  }
-//			  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
-//				  LCD_DrawDot(j, i, GRID);
-//			  }
-//			  if (j==0){
-//				  LCD_DrawDot(0, i, BG);
-//			  }
-//		  }
-//		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
-//		first_graph[i] = first_graph[i]*240/4095;
-//		if (i>1){
-//			LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
-//		}
-//		index++;
+	  i = index%320;
+//	  Remove previous graph and keep the grid : making display extremely slow
+		  for (int j = 0; j < 240; j++){
+			  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
+				  LCD_DrawDot(j, i, BG);
+			  }
+			  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
+				  LCD_DrawDot(j, i, GRID);
+			  }
+			  if (j==0){
+				  LCD_DrawDot(0, i, BG);
+			  }
+		  }
+		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
+		first_graph[i] = first_graph[i]*240/4095;
+		if (i>1){
+			LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
+		}
+		index++;
 	  //
 		//Using normal method
 //		HAL_ADC_PollForConversion(&hadc2, 100);
 //		  for (int i = 0; i < 320; i++){
-			  // Remove previous graph and keep the grid : making display extremely slow
+//			   Remove previous graph and keep the grid : making display extremely slow
 //			  if (i>0){
 //				  for (int j = 0; j < 240; j++){
 //					  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
 //						  LCD_DrawDot(j, i, BG);
+//						  LCD_DrawLine(j, i, j, i, BG);
 //					  }
 //					  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
 //						  LCD_DrawDot(j, i, GRID);
+//						  LCD_DrawLine(j, i, j, i, BG);
 //					  }
 //					  if (j==0){
 //						  LCD_DrawDot(0, i, BG);
 //					  }
 //				  }
 //			  }
-	  //
+//
 //			  if (i>0){
 //				  first_graph[i-1] = r;
 //			  }
