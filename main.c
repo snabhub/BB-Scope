@@ -55,7 +55,9 @@ SRAM_HandleTypeDef hsram1;
 int i = 0;
 double scale = 1;
 int increment = 2;
+int ts = 1;
 int adjust = 120;
+int k = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,7 +68,6 @@ static void MX_DMA_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
-uint32_t AD_RES = 0;
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -130,7 +131,7 @@ int main(void)
   uint32_t color1 = BLUE, color2 = YELLOW;
   int size1 = 0, size2 = 0;
   int key1=0, key2=0, key3=0, key4=0;
-  float t = 320;
+
   int check = 0;
   int r = 0;
   int cu[320];
@@ -170,14 +171,12 @@ int main(void)
   void ZoomOutVertical(){
 	  scale = scale/increment;
   }
-//  void ZoomInHorizon(double zoom, double scale){
-//	  double result = zoom*scale;
-////	  return result;
-//  }
-//  void ZoomOutHorizon(double zoom, double scale){
-//	  double result = zoom/scale;
-////	  return result;
-//  }
+  void ZoomInHorizon(){
+	  k = k + ts;
+  }
+  void ZoomOutHorizon(){
+	  k = k - ts;
+  }
   void MoveUp(){
 	  adjust = adjust + 10;
   }
@@ -185,7 +184,7 @@ int main(void)
 	  adjust = adjust - 10;
   }
 //  void MoveLeft(){
-//	  result = begin - adjust;
+//	  k = k;
 //  }
 //  void MoveRight(){
 //	  result = begin + adjust;
@@ -210,37 +209,75 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  //Using DMA
-	  i = index%320;
+	  i = i%320;
+	  index = index%320;
 //	  Remove previous graph and keep the grid : making display extremely slow
-	  for (int j = 0; j < 240; j++){
-		  if (j%2 == 0 && i%20 == 0) {
-			  LCD_DrawDot(j, i, GRID);
+//	  for (int j = 0; j < 240; j++){
+//		  if (j%2 == 0 && i%20 == 0) {
+//			  LCD_DrawDot(j, i, GRID);
+//		  }
+//		  else if (i%20 != 0 && j%20 == 0 && i%2 == 0){
+//			  LCD_DrawDot(j, i, GRID);
+//		  }
+//		  else if (i%2 == 0 && (j == 119 || j == 121)){
+//			  LCD_DrawDot(j, i, GRID);
+//		  }
+//		  else if (j%2 == 0 && (i == 159 || i == 161)){
+//			  LCD_DrawDot(j, i, GRID);
+//		  }
+//		  else{
+//			  LCD_DrawDot(j, i, BG);
+//		  }
+//	  }
+	  while (i==index){
+		  for (int j = 0; j < 240; j++){
+			  if (j%2 == 0 && i%20 == 0) {
+				  LCD_DrawDot(j, i, GRID);
+			  }
+			  else if (i%20 != 0 && j%20 == 0 && i%2 == 0){
+				  LCD_DrawDot(j, i, GRID);
+			  }
+			  else if (i%2 == 0 && (j == 119 || j == 121)){
+				  LCD_DrawDot(j, i, GRID);
+			  }
+			  else if (j%2 == 0 && (i == 159 || i == 161)){
+				  LCD_DrawDot(j, i, GRID);
+			  }
+			  else{
+				  LCD_DrawDot(j, i, BG);
+			  }
 		  }
-		  else if (i%20 != 0 && j%20 == 0 && i%2 == 0){
-			  LCD_DrawDot(j, i, GRID);
-		  }
-		  else if (i%2 == 0 && (j == 119 || j == 121)){
-			  LCD_DrawDot(j, i, GRID);
-		  }
-		  else if (j%2 == 0 && (i == 159 || i == 161)){
-			  LCD_DrawDot(j, i, GRID);
-		  }
-		  else{
-			  LCD_DrawDot(j, i, BG);
-		  }
+		  i++;
+		  i = i%320;
 	  }
+		HAL_ADC_Start_DMA(&hadc1, &first_graph[index], 320);
 
-		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
-		first_graph[i] = first_graph[i]*120/4095 + adjust;
-		first_graph[i] = (first_graph[i]-adjust)/scale+adjust;
-		if (i>1){
-			LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
+		first_graph[index] = first_graph[index]*120/4095 + adjust;
+		first_graph[index] = (first_graph[index]-adjust)/scale+adjust;
+		if (index>k-1){
+			LCD_DrawLine(first_graph[index-k], index-k, first_graph[index], index, FG);
 		}
-		index++;
+//			i++;
+		index+=k;
+//	  if(i == 319){
+//		  LCD_Clear(0, 0, 240, 320, BG);
+//		  DrawGrid();
+//	  }
+
+
+//		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
+//
+//		first_graph[i] = first_graph[i]*120/4095 + adjust;
+//		first_graph[i] = (first_graph[i]-adjust)/scale+adjust;
+//		if (i>1 && index > k-1){
+//			LCD_DrawLine(first_graph[i-1], index-k, first_graph[i], index, FG);
+//		}
+//		i++;
+//		index+=k;
+
 
 	  //4 functions
-	  key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-
+		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
 	  	if (key1 == 1){
 	  		HAL_Delay(D);
 	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
@@ -253,6 +290,7 @@ int main(void)
 	  		}
 
 	  	}
+
 	  	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
 	  	if (key2 == 1){
 	  		HAL_Delay(D);
@@ -265,23 +303,19 @@ int main(void)
 	  			MoveDown();
 	  		}
 	  	}
-//	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-//	  	if (key3 == 1){
-//	  		HAL_Delay(200);
-//			key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-//			LCD_Clear(0, 0, 240, 320, BLACK);
-//			DrawGrid();
-//			size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//			size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//			if (key3 == 1){
-//				begin = MoveRight(begin, 10);
-//			}
-//			else{
-//				begin = MoveLeft(begin, 10);
-//			}
-//			DrawGraph(first_graph, size1, zoom_x1, color1);
-////	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	  	}
+
+	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+	  	if (key3 == 1){
+	  		HAL_Delay(200);
+			key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+			if (key3 == 1){
+				ZoomOutHorizon();
+			}
+			else{
+				ZoomInHorizon();
+			}
+	  	}
+
 //	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
 //	  	if (key4 == 1){
 //	  		HAL_Delay(200);
@@ -563,8 +597,20 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, GPIO_PIN_1, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PA4 PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
+  /*Configure GPIO pin : PC13 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PA4 PA5 PA6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
