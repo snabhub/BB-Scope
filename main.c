@@ -114,17 +114,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  double temp = 0;
   HAL_ADCEx_Calibration_Start(&hadc1);
   HAL_ADC_Start(&hadc1);
   HAL_ADCEx_Calibration_Start(&hadc2);
   HAL_ADC_Start(&hadc2);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
-  double y1 = 0, y2 = 0;
-  double zoom_x1 = 1;
-  double zoom_x2 = 1;
-  double zoom_y1 = 2;
-  double zoom_y2 = 0.5;
   int gsize1 = 320;
   uint16_t first_graph[gsize1];
   uint32_t color1 = BLUE, color2 = YELLOW;
@@ -224,14 +218,15 @@ int main(void)
 //}
  int D = 300;
  int check = 0;
+ int t1 = 0, t2 = 0, t3 = 0;
+ char freq[10];
+ double s;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 	  i = i%320;
-	  index = index%320;
-	  HAL_Delay(10);
 	  if (check==0){
 		  for(int q = 0; q < k; q++){
 			  for (int j = 0; j < 240; j++){
@@ -257,82 +252,90 @@ int main(void)
 	  else{
 		  i = i + k;
 	  }
-		HAL_ADC_Start_DMA(&hadc1, &first_graph[index], 320);
+	    index = index%320;
+		HAL_ADC_Start_DMA(&hadc1, &first_graph[index], 1);
+	  HAL_ADC_Start_DMA(&hadc1, &s, 1);
 		first_graph[index] = first_graph[index]*120/4095 + adjust;
 		first_graph[index] = (first_graph[index]-adjust)/scale+adjust;
+//		sprintf(freq, "%1u", 1);
+//		LCD_DrawString(10, 10, freq);
+		if (first_graph[index]<first_graph[index-1]){
+			if (t1==0){
+				t1 = index;
+			}
+			else{
+				t3 = t2;
+				t2 = index;
+				sprintf(freq, "%4u", t2-t3);
+				LCD_DrawString(10, 10, freq);
+				t1 = 0;
+				sprintf(freq, "%4u", first_graph[index]);
+				LCD_DrawString(10, 20, freq);
+			}
+		}
 		if (index>k-1 && index < 320 && check==0){
 			Draw(0);
 		}
 
 
-//		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
-//
-//		first_graph[i] = first_graph[i]*120/4095 + adjust;
-//		first_graph[i] = (first_graph[i]-adjust)/scale+adjust;
-//		if (i>1 && index > k-1){
-//			LCD_DrawLine(first_graph[i-1], index-k, first_graph[i], index, FG);
-//		}
-//		i++;
-//		index+=k;
-
 
 	  //4 functions
-		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-	  	if (key1 == 1){
-	  		HAL_Delay(D);
-	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-	  		if (key1 == 1){
-	  			ZoomInVertical();
-	  		}
-	  		else{
-	  			ZoomOutVertical();
-	  		}
-
-	  	}
-
-	  	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-	  	if (key2 == 1){
-	  		HAL_Delay(D);
-	  		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-	  		if (key2 == 1){
-	  			MoveUp();
-	  		}
-	  		else{
-	  			MoveDown();
-	  		}
-	  	}
-
-	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-	  	if (key3 == 1){
-	  		HAL_Delay(200);
-			key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-			if (key3 == 1){
-				ZoomOutHorizon();
-			}
-			else{
-				ZoomInHorizon();
-			}
-	  	}
+//		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+//	  	if (key1 == 1){
+//	  		HAL_Delay(D);
+//	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
+//	  		if (key1 == 1){
+//	  			ZoomInVertical();
+//	  		}
+//	  		else{
+//	  			ZoomOutVertical();
+//	  		}
+//
+//	  	}
+//
+//	  	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+//	  	if (key2 == 1){
+//	  		HAL_Delay(D);
+//	  		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+//	  		if (key2 == 1){
+//	  			MoveUp();
+//	  		}
+//	  		else{
+//	  			MoveDown();
+//	  		}
+//	  	}
+//
+//	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+//	  	if (key3 == 1){
+//	  		HAL_Delay(200);
+//			key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
+//			if (key3 == 1){
+//				ZoomOutHorizon();
+//			}
+//			else{
+//				ZoomInHorizon();
+//			}
+//	  	}
 	  	index+=k;
-
-	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-	  	if (key4 == 1){
-	  		HAL_Delay(200);
-	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-	  		if (key4 == 1){
-	  		}
-	  		else{
-	  		}
-	  	}
-	  	key5 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6);
-		if (key5 == 1){
-			if (check == 0){
-				check = 1;
-			}
-			else{
-				check = 0;
-			}
-		}
+//
+//	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+//	  	if (key4 == 1){
+//	  		HAL_Delay(200);
+//	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+//	  		if (key4 == 1){
+//	  		}
+//	  		else{
+//	  		}
+//	  	}
+//	  	key5 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6);
+//		if (key5 == 1){
+//			if (check == 0){
+//				check = 1;
+//			}
+//			else{
+//				check = 0;
+//			}
+//		}
   }
   /* USER CODE END 3 */
 }
@@ -368,7 +371,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV16;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
