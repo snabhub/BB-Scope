@@ -52,7 +52,6 @@ DMA_HandleTypeDef hdma_memtomem_dma2_channel1;
 SRAM_HandleTypeDef hsram1;
 
 /* USER CODE BEGIN PV */
-int i = 0;
 double scale = 1;
 int increment = 2;
 int ts = 1;
@@ -127,17 +126,18 @@ int main(void)
   double zoom_y1 = 2;
   double zoom_y2 = 0.5;
   int gsize1 = 320;
-  uint16_t first_graph[gsize1], second_graph[gsize1];
+  uint16_t first_graph[gsize1];
   uint32_t color1 = BLUE, color2 = YELLOW;
   int size1 = 0, size2 = 0;
-  int key1=0, key2=0, key3=0, key4=0;
+  int key1=0, key2=0, key3=0, key4=0, key5=0;
 
-  int check = 0;
   int r = 0;
   int cu[320];
   int X_L[]={1,10,100,1000,10000,100000,1000000,10000000};
+  float array1[320];
   int begin = 0;
   int index = 0;
+  int i = 0;
   void DrawGrid(){
 	  for (int i = 1; i < 16; i++){
 		  for (int j = 0; j < 240; j+=2){
@@ -175,13 +175,42 @@ int main(void)
 	  k = k + ts;
   }
   void ZoomOutHorizon(){
-	  k = k - ts;
+	  if (k>1){
+		  k = k - ts;
+	  }
   }
   void MoveUp(){
 	  adjust = adjust + 10;
   }
   void MoveDown(){
 	  adjust = adjust - 10;
+  }
+  void Draw(int mode){
+	  if (mode == 0){
+		  LCD_DrawLine(first_graph[index-k], index-k, first_graph[index], index, FG);
+	  }
+	  else if (mode == 1){
+		  LCD_DrawDot(first_graph[index], index, FG);
+	  }
+	  else if (mode == 2){ // small square
+			LCD_DrawDot(first_graph[index]-1, index+1, FG);
+			LCD_DrawDot(first_graph[index], index+1, FG);
+			LCD_DrawDot(first_graph[index]+1, index+1, FG);
+			LCD_DrawDot(first_graph[index]-1, index-1, FG);
+			LCD_DrawDot(first_graph[index], index-1, FG);
+			LCD_DrawDot(first_graph[index]+1, index-1, FG);
+			LCD_DrawDot(first_graph[index]+1, index, FG);
+			LCD_DrawDot(first_graph[index]-1, index, FG);
+	  }
+	  else if (mode == 3){ // square wave
+			for (int q = index-k; q < index; q++){
+				LCD_DrawDot(first_graph[index], q, FG);
+			}
+			for (int r = first_graph[index-k]; r < first_graph[index]; r++){
+				LCD_DrawDot(r, index, FG);
+				LCD_DrawDot(r, index-k, FG);
+			}
+	  }
   }
 //  void MoveLeft(){
 //	  k = k;
@@ -190,79 +219,50 @@ int main(void)
 //	  result = begin + adjust;
 //  }
   DrawGrid();
-  //create static array
-//  for (int x = 0; x < gsize1; x++){
-//	  y1 = 60+60*sin(x*2*M_PI/160);
-//	  y2 = 180+60*sin(x*2*M_PI/160);
-//	  first_graph[x] = y1;
-//	  second_graph[x] = y2;
-//  }
-//  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//  DrawGraph(first_graph, size1, zoom_x1, color1);
-//  DrawGraph(second_graph, size2, zoom_x2, color2);
-
+//for(uint16_t i=0;i<320;i++){
+//	array
+//}
  int D = 300;
+ int check = 0;
   while (1)
   {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //Using DMA
 	  i = i%320;
 	  index = index%320;
-//	  Remove previous graph and keep the grid : making display extremely slow
-//	  for (int j = 0; j < 240; j++){
-//		  if (j%2 == 0 && i%20 == 0) {
-//			  LCD_DrawDot(j, i, GRID);
-//		  }
-//		  else if (i%20 != 0 && j%20 == 0 && i%2 == 0){
-//			  LCD_DrawDot(j, i, GRID);
-//		  }
-//		  else if (i%2 == 0 && (j == 119 || j == 121)){
-//			  LCD_DrawDot(j, i, GRID);
-//		  }
-//		  else if (j%2 == 0 && (i == 159 || i == 161)){
-//			  LCD_DrawDot(j, i, GRID);
-//		  }
-//		  else{
-//			  LCD_DrawDot(j, i, BG);
-//		  }
-//	  }
-	  while (i==index){
-		  for (int j = 0; j < 240; j++){
-			  if (j%2 == 0 && i%20 == 0) {
-				  LCD_DrawDot(j, i, GRID);
+	  HAL_Delay(10);
+	  if (check==0){
+		  for(int q = 0; q < k; q++){
+			  for (int j = 0; j < 240; j++){
+				  if (j%2 == 0 && i%20 == 0) {
+					  LCD_DrawDot(j, i, GRID);
+				  }
+				  else if (i%20 != 0 && j%20 == 0 && i%2 == 0){
+					  LCD_DrawDot(j, i, GRID);
+				  }
+				  else if (i%2 == 0 && (j == 119 || j == 121)){
+					  LCD_DrawDot(j, i, GRID);
+				  }
+				  else if (j%2 == 0 && (i == 159 || i == 161)){
+					  LCD_DrawDot(j, i, GRID);
+				  }
+				  else{
+					  LCD_DrawDot(j, i, BG);
+				  }
 			  }
-			  else if (i%20 != 0 && j%20 == 0 && i%2 == 0){
-				  LCD_DrawDot(j, i, GRID);
-			  }
-			  else if (i%2 == 0 && (j == 119 || j == 121)){
-				  LCD_DrawDot(j, i, GRID);
-			  }
-			  else if (j%2 == 0 && (i == 159 || i == 161)){
-				  LCD_DrawDot(j, i, GRID);
-			  }
-			  else{
-				  LCD_DrawDot(j, i, BG);
-			  }
+			  i++;
 		  }
-		  i++;
-		  i = i%320;
+	  }
+	  else{
+		  i = i + k;
 	  }
 		HAL_ADC_Start_DMA(&hadc1, &first_graph[index], 320);
-
 		first_graph[index] = first_graph[index]*120/4095 + adjust;
 		first_graph[index] = (first_graph[index]-adjust)/scale+adjust;
-		if (index>k-1){
-			LCD_DrawLine(first_graph[index-k], index-k, first_graph[index], index, FG);
+		if (index>k-1 && index < 320 && check==0){
+			Draw(0);
 		}
-//			i++;
-		index+=k;
-//	  if(i == 319){
-//		  LCD_Clear(0, 0, 240, 320, BG);
-//		  DrawGrid();
-//	  }
 
 
 //		HAL_ADC_Start_DMA(&hadc1, &first_graph[i], 320);
@@ -281,7 +281,6 @@ int main(void)
 	  	if (key1 == 1){
 	  		HAL_Delay(D);
 	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-//	  		DrawGrid();
 	  		if (key1 == 1){
 	  			ZoomInVertical();
 	  		}
@@ -295,7 +294,6 @@ int main(void)
 	  	if (key2 == 1){
 	  		HAL_Delay(D);
 	  		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-//	  		DrawGrid();
 	  		if (key2 == 1){
 	  			MoveUp();
 	  		}
@@ -315,27 +313,26 @@ int main(void)
 				ZoomInHorizon();
 			}
 	  	}
+	  	index+=k;
 
-//	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-//	  	if (key4 == 1){
-//	  		HAL_Delay(200);
-//	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-//	  		LCD_Clear(0, 0, 240, 320, BLACK);
-//	  		DrawGrid();
-//	  		if (key4 == 1){
-//	  		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
-//	  		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
-//	  		}
-//	  		else{
-//	  		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
-//	  		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
-//	  		}
-//	  		key4 = 1;
-//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-////	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	  	}
+	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+	  	if (key4 == 1){
+	  		HAL_Delay(200);
+	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
+	  		if (key4 == 1){
+	  		}
+	  		else{
+	  		}
+	  	}
+	  	key5 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6);
+		if (key5 == 1){
+			if (check == 0){
+				check = 1;
+			}
+			else{
+				check = 0;
+			}
+		}
   }
   /* USER CODE END 3 */
 }
