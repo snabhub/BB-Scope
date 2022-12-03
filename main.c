@@ -42,31 +42,44 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
- ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 DMA_HandleTypeDef hdma_adc1;
 
+DAC_HandleTypeDef hdac;
+DMA_HandleTypeDef hdma_dac_ch1;
+
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 DMA_HandleTypeDef hdma_memtomem_dma2_channel1;
 SRAM_HandleTypeDef hsram1;
 
 /* USER CODE BEGIN PV */
-uint16_t size = 320;
+uint16_t size = 240;
 uint16_t color1 = BLUE, color2 = YELLOW;
-uint32_t X_L[]={1,10,100,1000,10000,100000,1000000};
-uint16_t Y_L[]={1,5,10,50,100,500,1000,5000};
+uint16_t Y_L[]={1,2,3,5};
 uint16_t begin = 0;
-uint16_t first_graph[320];
-uint16_t ADCDATA[320];
-uint16_t value[320];
+uint16_t first_graph[240];
+uint16_t wave_graph[240];
+uint16_t ADCDATA[240];
+uint16_t value[240];
 uint8_t y=0;
-uint16_t index1=0;
-
-
 uint16_t VMin;
 uint16_t VMax;
 uint16_t VAve;
+uint16_t Vpk_pk=0;
+int16_t graphave=0;
+uint8_t freeze=0;
+uint8_t trigger=0;
+
+int counter = 0;
+int aState = 0;
+int aLastState = 0;
+int temp = 0;
+
+float Frequency = 8000;
+float Amplitude = 1;
 
 
 /* USER CODE END PV */
@@ -79,8 +92,31 @@ static void MX_DMA_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_DAC_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
-void dataAnalize();
+void dataAnalize(void);
+void drawgridh(uint16_t j);
+void drawgridv(uint16_t j);
+void drawgrid(void);
+void runstopgraph(uint8_t freestate);
+void DrawGraph(int16_t graph[], uint16_t color);
+void datamine(uint8_t state, uint32_t loop1, uint8_t t);
+void showvalue(void);
+void voltageAnalize(void);
+void showtimebase(uint8_t state);
+void showvoltagebase(uint8_t state);
+void voltagechange(uint8_t state,int16_t offset);
+void showbase(void);
+void drawui(uint16_t text, uint16_t bg, int select);
+void triggermode(uint8_t trigger);
+void showtriggeronoff();
+
+void Scope();
+
+void Wave(int type, float freq, float amp);
+
+void Generator();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -120,6 +156,8 @@ int main(void)
   MX_TIM3_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
+  MX_DAC_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   LCD_INIT();
   /* USER CODE END 2 */
@@ -130,234 +168,31 @@ int main(void)
   HAL_ADC_Start(&hadc1);
   HAL_ADC_PollForConversion(&hadc1, 100);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+  /* USER CODE END 2 */
 
-  void DrawGrid(){
-	  for (uint8_t i = 1; i < 16; i++){
-		  for (uint8_t j = 0; j < 240; j+=2){
-			  if(i == 8){
-				  LCD_DrawDot(j, i*20-1, GRID);
-				  LCD_DrawDot(j, i*20+1, GRID);
-			  }
-			  LCD_DrawDot(j, i*20, GRID);
-		  }
-	  }
-	  for (uint8_t i = 1; i < 12; i++){
-		  for (uint16_t j = 0; j < 320; j+=2){
-			 if(i == 6){
-			  LCD_DrawDot(i*20-1, j, GRID);
-			  LCD_DrawDot(i*20+1, j, GRID);
-			}
-			LCD_DrawDot(i*20, j, GRID);
-		  }
-	  }
-  }
-  void DrawGraph(uint16_t graph[], uint32_t color){
-	  for (uint16_t x = 1; x < 320; x++){
-		  if (graph[x]>0 && graph[x]<240){
-			  LCD_DrawLine(graph[x], x, graph[x-1], x-1, color);
-		  }
-	  }
-  }
-//  void ZoomInVertical(float graph[], uint32_t Yscale){
-//	  for (uint16_t x = 0; x < 320; x++){
-//		  graph[x] = graph[x]/Yscale;
-//	  }
-//  }
-//  void ZoomOutVertical(float graph[], uint32_t Yscale){
-//	  for (uint16_t x = 0; x < 320; x++){
-//		  graph[x] = graph[x]*Yscale;
-//	  }
-//  }
-//  float ZoomInHorizon(float zoom, float scale){
-//	  float result = zoom*scale;
-//	  return result;
-//  }
-//  float ZoomOutHorizon(float zoom, float scale){
-//	  float result = zoom/scale;
-//	  return result;
-//  }
-  void MoveUp(uint16_t graph[]){
-	  for (uint16_t x = 0; x < 320; x++){
-		  graph[x] = graph[x] + 1;
-	  }
-  }
-  void MoveDown(uint16_t graph[]){
-	  for (uint16_t x = 0; x < 320; x++){
-		  graph[x] = graph[x] - 1;
-	  }
-  }
-//	double MoveLeft(float begin, float adjust){
-//	  double result = begin - adjust;
-//	  return result;
-//	}
-//	double MoveRight(float begin, float adjust){
-//	  double result = begin + adjust;
-//	  return result;
-//	}
-  DrawGrid();
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
 
-//  for (int x = 0; x < gsize1; x++){
-//	  y1 = 60+60*sin(x*2*M_PI/160);
-//	  y2 = 180+60*sin(x*2*M_PI/160);
-//	  first_graph[x] = y1;
-//	  second_graph[x] = y2;
-//  }
-//  size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//  size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//  DrawGraph(first_graph, size1, zoom_x1, color1);
-//  DrawGraph(second_graph, size2, zoom_x2, color2);
-//  HAL_ADC_Start_DMA(&hadc1, &value[index1],320);
+  HAL_ADCEx_Calibration_Start(&hadc1);
+  HAL_ADC_Start(&hadc1);
+  HAL_ADC_PollForConversion(&hadc1, 100);
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 
 
-  while (1)
-  {
+  HAL_TIM_Base_Start(&htim2);
+  HAL_DAC_Start_DMA(&hdac,  DAC1_CHANNEL_1, wave_graph, 240, DAC_ALIGN_12B_R);
+  TIM2->PSC = 1;
+  LCD_Clear(0, 0, 240, 80, BG);
+  drawgrid();
+
+    while (1)
+    {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  HAL_ADC_Start_DMA(&hadc1,value,320);
-//	  if(HAL_ADC_GetValue(&hadc1)*3300/4096>1500){
-		for(uint16_t i=0;i<320;i++){
-//			HAL_ADC_Start_DMA(&hadc1,&value[i],1);
-			ADCDATA[i]=HAL_ADC_GetValue(&hadc1);
-			value[i]=ADCDATA[i]*3300/4096;
-			first_graph[i]=ADCDATA[i]*Y_L[y]*240/4096;
-		}
-//	  }
+  	  Scope();
+  //	  Generator();
 
-		dataAnalize();
-		char stra[80];
-		char strb[80];
-		char strc[80];
-		sprintf(stra, "%4u",VAve);
-		sprintf(strb, "%4u",VMax);
-		sprintf(strc, "%4u",VMin);
-		LCD_DrawString(60,20 , stra );
-		LCD_DrawString(60,40 , strb );
-		LCD_DrawString(60,60 , strc );
-		LCD_DrawString(20,20,"VAve=");
-		LCD_DrawString(20,40,"VMax=");
-		LCD_DrawString(20,60,"VMin=");
-
-		DrawGraph(first_graph, color2);
-		HAL_Delay(300);
-		DrawGraph(first_graph, BLACK);
-		DrawGrid();
-
-		if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 1){
-			HAL_Delay(300);
-			while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 1);
-			y=(y+1)%8;
-		}
-
-		if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 1){
-			HAL_Delay(300);
-			while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 1);
-			y=(y+7)%8;
-		}
-
-
-
-//		  for (int i = 0; i < 320; i++){
-//			  if (check==1&&i>0){
-//				  for (int j = 0; j < 240; j++){
-//					  if (j%20 != 0 && i%20 != 0 && j!= 119 && j!=121 && i!=159 && i!=161){
-//						  LCD_DrawDot(j, i, BG);
-//					  }
-//					  else if (j%20 == 0 && j%2 != 0 && i%20 == 0 && i%2!=0) {
-//						  LCD_DrawDot(j, i, GRID);
-//					  }
-//					  if (j==0){
-//						  LCD_DrawDot(0, i, BG);
-//					  }
-//				  }
-//			  }
-//			  if (i>0){
-//				  first_graph[i-1] = r;
-//			  }
-//			  r = HAL_ADC_GetValue(&hadc2)*240/4095+120;
-//			  if (i>1){
-//				  LCD_DrawLine(first_graph[i-2], i-1, first_graph[i-1], i, FG);
-//			  }
-//			  HAL_Delay(t/320);
-//		  }
-//		  check = 1;
-
-
-//	  key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-//	  	if (key1 == 1){
-//	  		HAL_Delay(200);
-//	  		key1 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
-//	  		LCD_Clear(0, 0, 240, 320, BLACK);
-//	  		DrawGrid();
-//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//	  		if (key1 == 1){
-//	  			begin = MoveRight(begin, 10);
-//	  		}
-//	  		else{
-//	  			begin = MoveRight(begin, 10);
-//	  		}
-//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	  	}
-//	  	key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-//	  	if (key2 == 1){
-//	  		HAL_Delay(200);
-//	  		key2 = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
-//	  		LCD_Clear(0, 0, 240, 320, BLACK);
-//	  		DrawGrid();
-//	  		if (key2 == 1){
-//	  			MoveUp(first_graph, size1, 10);
-//	  			MoveUp(second_graph, size2, 10);
-//	  		}
-//	  		else{
-//	  			MoveDown(first_graph, size1, 10);
-//	  			MoveDown(second_graph, size2, 10);
-//	  		}
-//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	  	}
-//	  	key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-//	  	if (key3 == 1){
-//	  		HAL_Delay(200);
-//	  		key3 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4);
-//	  		LCD_Clear(0, 0, 240, 320, BLACK);
-//	  		DrawGrid();
-//	  		if (key3 == 1){
-//	  			ZoomOutVertical1(first_graph, size1, zoom_y1);
-//	  			ZoomOutVertical2(second_graph, size2, zoom_y2);
-//	  		}
-//	  		else{
-//	  			ZoomInVertical1(first_graph, size1, zoom_y1);
-//	  			ZoomInVertical2(second_graph, size2, zoom_y2);
-//	  		}
-//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	  	}
-//	  	key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-//	  	if (key4 == 1){
-//	  		HAL_Delay(200);
-//	  		key4 = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5);
-//	  		LCD_Clear(0, 0, 240, 320, BLACK);
-//	  		DrawGrid();
-//	  		if (key4 == 1){
-//	  		  zoom_x1 = ZoomOutHorizon(zoom_x1, 2);
-//	  		  zoom_x2 = ZoomOutHorizon(zoom_x2, 2);
-//	  		}
-//	  		else{
-//	  		  zoom_x1 = ZoomInHorizon(zoom_x1, 2);
-//	  		  zoom_x2 = ZoomInHorizon(zoom_x2, 2);
-//	  		}
-//	  		key4 = 1;
-//	  		size1 = sizeof(first_graph)/sizeof(first_graph[0]);
-//	  		size2 = sizeof(second_graph)/sizeof(second_graph[0]);
-//	  		DrawGraph(first_graph, size1, zoom_x1, color1);
-//	  		DrawGraph(second_graph, size2, zoom_x2, color2);
-//	  	}
   }
   /* USER CODE END 3 */
 }
@@ -393,7 +228,7 @@ void SystemClock_Config(void)
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV16;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
@@ -406,6 +241,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+  HAL_RCC_MCOConfig(RCC_MCO, RCC_MCO1SOURCE_PLLCLK, RCC_MCODIV_1);
 }
 
 /**
@@ -503,6 +339,91 @@ static void MX_ADC2_Init(void)
 }
 
 /**
+  * @brief DAC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_DAC_Init(void)
+{
+
+  /* USER CODE BEGIN DAC_Init 0 */
+
+  /* USER CODE END DAC_Init 0 */
+
+  DAC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN DAC_Init 1 */
+
+  /* USER CODE END DAC_Init 1 */
+
+  /** DAC Initialization
+  */
+  hdac.Instance = DAC;
+  if (HAL_DAC_Init(&hdac) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** DAC channel OUT1 config
+  */
+  sConfig.DAC_Trigger = DAC_TRIGGER_T2_TRGO;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN DAC_Init 2 */
+
+  /* USER CODE END DAC_Init 2 */
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 0;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -516,7 +437,6 @@ static void MX_TIM3_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM3_Init 1 */
 
@@ -536,28 +456,15 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 30000;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
-  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -591,6 +498,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+  /* DMA2_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Channel3_IRQn);
 
 }
 
@@ -621,21 +531,27 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA0 */
   GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA4 PA5 PA6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6;
+  /*Configure GPIO pins : PA5 PA6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PC4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PB0 PB1 PB5 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_5;
@@ -651,12 +567,25 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PA8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : PE1 */
   GPIO_InitStruct.Pin = GPIO_PIN_1;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 }
 
@@ -718,13 +647,150 @@ static void MX_FSMC_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void dataAnalize() {
+void drawui(uint16_t text, uint16_t bg, int select){
+	if (select == 0){
+		LCD_DrawString(143,0, "Voltage", bg, text);
+		LCD_DrawString(127,0, "Time", text, bg);
+		LCD_DrawString(111,0, "Trigger", text, bg);
+	}
+	else if (select == 1){
+		LCD_DrawString(143,0, "Voltage", text, bg);
+		LCD_DrawString(127,0, "Time", bg, text);
+		LCD_DrawString(111,0, "Trigger", text, bg);
+	}
+	else if (select == 2){
+		LCD_DrawString(143,0, "Voltage", text, bg);
+		LCD_DrawString(127,0, "Time", text, bg);
+		LCD_DrawString(111,0, "Trigger", bg, text);
+	}
+}
+
+void drawgridh(uint16_t j){
+	for(uint16_t i=0;i<240;i+=2){
+		LCD_DrawDot(i, j, GRID);
+	}
+}
+
+void drawgridv(uint16_t j){
+	for(uint16_t i=80;i<320;i+=2){
+		LCD_DrawDot(j, i, GRID);
+	}
+}
+
+void drawgrid(){
+	for(uint16_t i=80;i<=320;i+=24){
+		drawgridh(i);
+	}
+	  drawgridh(199);
+	  drawgridh(201);
+
+	for(uint16_t i=0;i<=240;i+=24){
+		drawgridv(i);
+	}
+	  drawgridv(119);
+	  drawgridv(121);
+
+}
+
+void DrawGraph(int16_t graph[], uint16_t color){
+	for (uint16_t x = 1; x < 240; x++){
+		if ((graph[x]>=0) && (graph[x]<240)){
+		 LCD_DrawLine(graph[x], x+80, graph[x-1], x+79, color);
+		}
+	}
+}
+
+void triggermode(uint8_t state){
+	if(state==1){
+		uint16_t tri=0;
+		tri=HAL_ADC_GetValue(&hadc1);
+		while(tri!=2048){
+			tri=HAL_ADC_GetValue(&hadc1);
+		}
+	}
+}
+
+void runstopgraph(uint8_t freestate){
+	if(freestate==0){
+		DrawGraph(first_graph, color2);
+		HAL_Delay(300);
+		DrawGraph(first_graph, BLACK);
+		drawgrid();
+	}
+	else{
+		DrawGraph(first_graph, color2);
+		while(1){
+			if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)==1){
+				while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 1);
+				DrawGraph(first_graph, BLACK);
+				drawgrid();
+				freeze+=1;
+				freeze%=2;
+				break;
+			}
+		}
+	}
+}
+
+void datamine(uint8_t state, uint32_t loop1, uint8_t t){
+	  while(1){
+		  if(state==0){
+			  if(loop1<240){
+				  ADCDATA[t]=HAL_ADC_GetValue(&hadc1);
+				  value[t]=ADCDATA[t]*3600/4096;
+				  first_graph[t]=ADCDATA[t]*240/4096;
+				  loop1+=1;
+				  t+=1;
+				  continue;
+			  }
+			  break;
+		  }
+		  else if(state==1){
+			  if(loop1<2400){
+				  if((loop1%10)==0){
+					  ADCDATA[t]=HAL_ADC_GetValue(&hadc1);
+					  value[t]=ADCDATA[t]*3600/4096;
+					  first_graph[t]=ADCDATA[t]*240/4096;
+					  t+=1;
+				  }
+				  loop1+=1;
+				  continue;
+			  }
+			  break;
+		  }
+		  else if(state==2){
+			  if(loop1<24000){
+				  if((loop1%100)==0){
+					  ADCDATA[t]=HAL_ADC_GetValue(&hadc1);
+					  value[t]=ADCDATA[t]*3600/4096;
+					  first_graph[t]=ADCDATA[t]*240/4096;
+					  t+=1;
+				  }
+				  loop1+=1;
+				  continue;
+			  }
+			  break;
+		  }
+	  }
+}
+
+void voltagechange(uint8_t state,int16_t offset){
+	if(freeze==0){
+		for(uint8_t i=0;i<240;i++){
+			first_graph[i]=(first_graph[i]-graphave)*Y_L[state]+graphave+offset;
+		}
+	}
+}
+
+void voltageAnalize() {
   uint16_t d;
   uint32_t sum = 0;
+  uint16_t a;
+  uint32_t graphsum = 0;
 
-  VMin = 3300;
+  VMin = 3600;
   VMax = 0;
-  for (uint16_t i = 0; i < 320; i++) {
+  for (uint16_t i = 0; i < 240; i++) {
     d = value[i];
     sum = sum + d;
     if (d < VMin) {
@@ -733,13 +799,246 @@ void dataAnalize() {
     if (d > VMax) {
       VMax = d;
     }
-  }
 
-  VAve = sum / 320;
+    a=first_graph[i];
+    graphsum=graphsum+a;
+  }
+  VAve = sum / 240;
+  Vpk_pk= VMax-VMin;
+  graphave = graphsum / 240;
+
+}
+
+uint16_t freqAnalize(){
+	uint16_t k=0;
+	uint16_t VMin5DOWN=VMin*(1-0.05);
+	uint16_t VMin5UP=VMin*(1+0.05);
+	for(uint8_t j=0;j<240;j++){
+		if(value[j]==VAve){
+			for(uint8_t i=0;i<240;i++){
+				k+=1;
+				if(value[i]>=VMin5DOWN && value[i]<=VMin5UP){
+					break;
+				}
+			}
+		}
+	}
+	return k;
 }
 
 void showvalue(){
+	char stra[80];
+	char strb[80];
+	char strc[80];
+	char strd[80];
+	sprintf(stra, "%4u",VAve);
+	sprintf(strb, "%4u",VMax);
+	sprintf(strc, "%4u",VMin);
+	sprintf(strd, "%4u",Vpk_pk);
+	LCD_DrawString(220 ,32, stra, RED, BG);
+	LCD_DrawString(200 ,32, strb, RED, BG);
+	LCD_DrawString(180 ,32, strc, RED, BG);
+	LCD_DrawString(160 ,32, strd, RED, BG);
+}
 
+void showtimebase(uint8_t state){
+	if(state==0){
+		LCD_DrawString(120,40," 50", RED, BG);
+		LCD_DrawString(120,64,"us", FG, BG);
+	}
+	else if(state==1){
+		LCD_DrawString(120,40,"250", RED, BG);
+		LCD_DrawString(120,64,"us", FG, BG);
+	}
+	else if(state==2){
+		LCD_DrawString(120,40,"  2", RED, BG);
+		LCD_DrawString(120,64,"ms", FG, BG);
+	}
+}
+
+void showtriggeronoff(){
+	if(trigger==0){
+		LCD_DrawString(100,50,"oFF", RED, BG);
+	}
+	else{
+		LCD_DrawString(100,50," oN", RED, BG);
+	}
+}
+
+void showvoltagebase(uint8_t state){
+	if(state==0){
+		LCD_DrawString(140,40,"360", RED, BG);
+	}
+	else if(state==1){
+		LCD_DrawString(140,40,"180", RED, BG);
+	}
+	else if(state==2){
+		LCD_DrawString(140,40,"120", RED, BG);
+	}
+	else if(state==3){
+		LCD_DrawString(140,40," 72", RED, BG);
+	}
+}
+
+void showbase(){
+	  LCD_OpenWindow (0,0,240,80);
+	  LCD_FillColor(240*80,WHITE);
+	  LCD_DrawString(220,0,"vav=    mv", FG, BG);//v@G=
+	  LCD_DrawString(200,0,"vMA=    mv", FG, BG);
+	  LCD_DrawString(180,0,"vMI=    mv", FG, BG);
+	  LCD_DrawString(160,0,"vPP=    mv", FG, BG);
+	  LCD_DrawString(140,0,"v/DV=   mv", FG, BG);
+	  LCD_DrawString(120,0,"!/DV=", FG, BG);
+	  LCD_DrawString(100,0,"!rig: ", FG, BG);
+	  LCD_DrawString(80,0,"Frequency:", FG, BG);
+//	  LCD_DrawString(40,0,"Qmplitude:", FG, BG);
+	  LCD_DrawString(40,0,"Ohase:", FG, BG);
+	  drawgrid();
+}
+
+void drawencoder(){
+	  aState = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_15);
+	  if (aState != aLastState){
+		  if (HAL_GPIO_ReadPin(GPIOD, GPIO_PIN_3) != aState){
+			  counter++;
+		  }else{
+			  if (counter > 0){
+				  counter--;
+			  }
+		  }
+	  }
+	  aLastState = aState;
+	  char s[3];
+	  sprintf(s, "%3u",counter);
+	  LCD_DrawString(0,100,s, FG, BG);
+	  if (HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_2)==0){
+		  LCD_DrawString(200,200,s, FG, BG);
+	  }
+	  if ((counter%3)!=(temp%3)){
+		  LCD_Clear(143,0, 16*3, 80, WHITE);
+		  drawui(FG, BG, counter%3);
+	  }
+	  temp = counter;
+	  if (counter%3==0){
+		  LCD_DrawString(160, 2, "Selecting", FG, BG);
+	  }
+	  else if(counter%3==1){
+		  LCD_DrawString(160, 22, "Selecting", FG, BG);
+	  }
+	  else{
+		  LCD_DrawString(160, 42, "Selecting", FG, BG);
+	  }
+}
+
+void Scope(void){
+	uint8_t stateloop=0;
+	uint8_t voltagestate=0;
+	uint16_t voltageoffset=0;
+	showbase();
+	uint32_t loop1=0;
+	uint8_t t=0;
+
+	triggermode(trigger);
+	if(freeze==0){
+	  datamine(stateloop,loop1,t);
+	}
+
+	voltageAnalize();
+	showvalue();
+	showtimebase(stateloop);
+	showvoltagebase(voltagestate);
+	showtriggeronoff();
+	voltagechange(voltagestate, voltageoffset);
+	runstopgraph(freeze);
+
+	if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0)==1){
+		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == 1);
+		trigger+=1;
+		trigger%=2;
+	}
+
+	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)==1){
+		while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13) == 1);
+		freeze+=1;
+		freeze%=2;
+	}
+
+	if(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4)==1){
+		while(HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_4) == 1);
+		stateloop+=1;
+		stateloop%=3;
+	}
+
+	if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7)==1){
+		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7) == 1);
+		voltagestate+=1;
+		voltagestate%=4;
+	}
+
+	if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5)==1){
+		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_5) == 1);
+		voltageoffset+=24;
+	}
+
+	if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6)==1){
+		while(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_6) == 1);
+		voltageoffset-=24;
+	}
+}
+
+void Wave(int type, float freq, float amp){
+//	max frequency is 18.7 kHz;
+//	max amplitude is 3.3V
+
+	amp = (amp > 3.3)? 3.3: amp;
+	float arr = 150000;
+	freq = (freq > 2.29)? (arr/freq): 65535;
+	TIM2->ARR = (freq > 1)? (int)(freq-1): 1;
+	switch(type){
+		case 0:{
+			for (int x = 0; x < 240; x++){
+			  wave_graph[x] = (int)(amp*(sin(x*M_PI/120)+1)*(2047)/3.3);
+			}
+			break;
+		}
+		case 1:{
+			for (int x = 0; x < 240; x++){
+			  wave_graph[x] = (x < 120)? (int)(x*amp*4095/(240*3.3)): (int)((240-x)*amp*4095/(240*3.3));
+			}
+			break;
+		}
+		case 2:{
+			for (int x = 0; x < 240; x++){
+			  wave_graph[x] = (int)(x*amp*4095/(240*3.3));
+			}
+			break;
+		}
+		default:{
+			for (int x = 0; x < 240; x++){
+			  wave_graph[x] = (x > 120)? (int)(4095*amp/3.3): 0;
+			}
+			break;
+		}
+	}
+}
+
+void Generator(void){
+	char stra[80];
+	char strb[80];
+	sprintf(stra, "%4uHz",(int)Frequency);
+	sprintf(strb, "%4uv",(int)Amplitude);
+	LCD_DrawString(210, 5, "Qmpl:", FG, BG);
+	LCD_DrawString(190, 5, strb, FG, BG);
+	LCD_DrawString(170, 5, "base:", FG, BG);
+	LCD_DrawString(150, 5, stra, FG, BG);
+	LCD_DrawString(210, 120, "Wave type:", FG, BG);
+	for(int i = 80; i < 320; i++){
+	  int point = wave_graph[i-80]*120/4096;
+	  LCD_DrawDot(58+(point), i, BG);
+	  LCD_DrawDot(60+(point), i, BG);
+	  LCD_DrawDot(62+(point), i, BG);
+	}
+	Wave(1, Frequency, Amplitude);
 }
 /* USER CODE END 4 */
 
