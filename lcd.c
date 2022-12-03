@@ -14,7 +14,7 @@ void LCD_INIT ( void )
 	LCD_BackLed_Control(ENABLE);      
 	LCD_Rst();
 	LCD_REG_Config();
-	LCD_Clear (0, 0, 240, 320, BG);
+	LCD_Clear (0, 0, 240, 320, FG);
 }
 
 
@@ -366,65 +366,118 @@ void LCD_DrawLine ( uint16_t usC1, uint16_t usP1, uint16_t usC2, uint16_t usP2, 
 	
 }   
 
+//void LCD_DrawChar ( uint16_t usC, uint16_t usP, const char cChar, uint16_t text, uint16_t bg)
+//{
+//	uint8_t ucTemp, ucRelativePositon, ucPage, ucColumn;
+//
+//
+//	ucRelativePositon = cChar - ' ';
+//
+//	LCD_OpenWindow ( usC, usP, WIDTH_EN_CHAR, HEIGHT_EN_CHAR );
+//
+//	LCD_Write_Cmd ( CMD_SetPixel );
+//
+//	for ( ucPage = 0; ucPage < HEIGHT_EN_CHAR; ucPage ++ )
+//	{
+//		ucTemp = ucAscii_1608 [ ucRelativePositon ] [ ucPage ];
+//
+//		for ( ucColumn = 0; ucColumn < WIDTH_EN_CHAR; ucColumn ++ )
+//		{
+//			if ( ucTemp & 0x01 )
+//				LCD_Write_Data ( text );
+//			else
+//				LCD_Write_Data (  bg );
+//
+//			ucTemp >>= 1;
+//
+//		}
+//
+//	}
+//
+//}
 
-void LCD_DrawChar ( uint16_t usC, uint16_t usP, const char cChar )
+void LCD_DrawChar ( uint16_t usC, uint16_t usP, const char cChar, uint16_t text, uint16_t bg)
 {
-	uint8_t ucTemp, ucRelativePositon, ucPage, ucColumn;
+	uint16_t ucTemp;
+	uint8_t ucRelativePosition, ucPage, ucColumn;
 
-	
-	ucRelativePositon = cChar - ' ';
-	
-	LCD_OpenWindow ( usC, usP, WIDTH_EN_CHAR, HEIGHT_EN_CHAR );
-	
-	LCD_Write_Cmd ( CMD_SetPixel );	
-	
-	for ( ucPage = 0; ucPage < HEIGHT_EN_CHAR; ucPage ++ )
+
+	ucRelativePosition = cChar - ' ';
+
+	LCD_OpenWindow ( usC, usP, HEIGHT_EN_CHAR, WIDTH_EN_CHAR );
+
+	LCD_Write_Cmd ( CMD_SetPixel );
+
+	for ( ucPage = 0; ucPage < WIDTH_EN_CHAR; ucPage ++ )
 	{
-		ucTemp = ucAscii_1608 [ ucRelativePositon ] [ ucPage ];
-		
-		for ( ucColumn = 0; ucColumn < WIDTH_EN_CHAR; ucColumn ++ )
+		ucTemp = ucAscii_1608 [ ucRelativePosition ] [ ucPage ];
+
+		for ( ucColumn = 0; ucColumn < HEIGHT_EN_CHAR; ucColumn ++ )
 		{
-			if ( ucTemp & 0x01 )
-				LCD_Write_Data ( 0x001F );
-			
+			if ( ucTemp & 0x0001 )
+				LCD_Write_Data ( text );
 			else
-				LCD_Write_Data (  0xFFFF );								
-			
-			ucTemp >>= 1;		
-			
+				LCD_Write_Data (  bg );
+
+			ucTemp >>= 1;
+
 		}
-		
+
 	}
-	
+
 }
 
 
+//void LCD_DrawString ( uint16_t usC, uint16_t usP, const char * pStr, uint16_t text, uint16_t bg)
+//{
+//	while ( * pStr != '\0' )
+//	{
+//		if ( ( usC - LCD_DispWindow_Start_COLUMN + WIDTH_EN_CHAR ) > LCD_DispWindow_COLUMN )
+//		{
+//			usC = LCD_DispWindow_Start_COLUMN;
+//			usP += HEIGHT_EN_CHAR;
+//		}
+//
+//		if ( ( usP - LCD_DispWindow_Start_PAGE + HEIGHT_EN_CHAR ) > LCD_DispWindow_PAGE )
+//		{
+//			usC = LCD_DispWindow_Start_COLUMN;
+//			usP = LCD_DispWindow_Start_PAGE;
+//		}
+//
+//		LCD_DrawChar ( usC, usP, * pStr, text, bg);
+//
+//		pStr ++;
+//
+//		usC += WIDTH_EN_CHAR;
+//
+//	}
+//
+//}
 
-
-void LCD_DrawString ( uint16_t usC, uint16_t usP, const char * pStr )
+void LCD_DrawString ( uint16_t usC, uint16_t usP, const char * pStr, uint16_t text, uint16_t bg)
 {
 	while ( * pStr != '\0' )
 	{
-		if ( ( usC - LCD_DispWindow_Start_COLUMN + WIDTH_EN_CHAR ) > LCD_DispWindow_COLUMN )
+		if ( ( usC - LCD_DispWindow_Start_COLUMN + HEIGHT_EN_CHAR ) > LCD_DispWindow_COLUMN )
 		{
-			usC = LCD_DispWindow_Start_COLUMN;
-			usP += HEIGHT_EN_CHAR;
+			usP = LCD_DispWindow_Start_PAGE;
+			usC += WIDTH_EN_CHAR;
 		}
-		
-		if ( ( usP - LCD_DispWindow_Start_PAGE + HEIGHT_EN_CHAR ) > LCD_DispWindow_PAGE )
+
+		if ( ( usP - LCD_DispWindow_Start_PAGE + WIDTH_EN_CHAR ) > LCD_DispWindow_PAGE )
 		{
 			usC = LCD_DispWindow_Start_COLUMN;
 			usP = LCD_DispWindow_Start_PAGE;
 		}
-		
-		LCD_DrawChar ( usC, usP, * pStr );
-		
+
+		LCD_DrawChar ( usC, usP, * pStr, text, bg);
+
 		pStr ++;
-		
-		usC += WIDTH_EN_CHAR;
-		
+
+		usP += WIDTH_EN_CHAR;
+
 	}
-	
+
 }
 
 
